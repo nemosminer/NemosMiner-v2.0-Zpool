@@ -1,6 +1,6 @@
-Bin/*
-Stats/*
-Logs/*
+Bin/
+Stats/
+Logs/
 *.rar
 *.7z
 *.zip

@@ -1,0 +1,25 @@
+<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" data-navbaractive="navconfigrunning" class="h2">Running Configuration</h1>
+</div>
+
+<div class="alert alert-info" role="alert">This is the full configuration NemosMiner is currently using (including 'PoolsConfig' built from the optional '.\Config\PoolsConfig.json' file)</div>
+<pre id="configrunning">
+</pre>
+
+<!-- Start of page scripts -->
+
+<script type="text/javascript">
+  $(function() {
+    $.ajax({url: '/configrunning',
+      success: function(result) {
+        $("#configrunning").empty();
+        $("#configrunning").append(JSON.stringify(result, undefined, 4));
+      }
+    });
+  });
+
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

@@ -1,0 +1,82 @@
+<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" class="h2" data-navbaractive="navswitchinglog">Switching Log</h1>
+</div>
+
+<div class="alert alert-info" role="alert">Lists the executed miners and the command lines used to do so.</div>
+
+<div id="toolbar">
+  <button id="clear-log" class="btn btn-warning">Clear switching log</button>
+</div>
+
+<table id="switchinglog" class="table"
+  data-toolbar="#toolbar"
+  data-click-to-select="true"
+  data-cache="true"
+  data-toggle="table"
+  data-icons="icons"
+  data-show-button-text="true"
+  data-remember-order="true"
+  data-filter-control="true"
+  data-disable-control-when-search="true"
+  data-show-search-clear-button="true"
+  data-show-columns="true"
+  data-show-toggle="true"
+  data-show-refresh="true"
+  data-detail-view="true"
+  data-show-refresh="true"
+  data-auto-refresh="true"
+  data-auto-refresh-status="true"
+  data-detail-formatter="detailFormatter"
+  data-url="/switchinglog"
+  data-sort-name="Date"
+  data-sort-order="desc"
+  >
+
+  <thead>
+    <tr>
+      <th data-field="DateTime" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-formatter="formatDate">Date & Time</th>
+      <th data-field="Action" data-sortable="true" data-filter-control="select" data-filter-strict-search="false">Action</th>
+      <th data-field="Name" data-sortable="true" data-filter-control="select" data-filter-strict-search="false">Name</th>
+      <th data-field="Pool" data-sortable="true" data-filter-control="select" data-filter-strict-search="true">Pool</th>
+      <th data-field="Algorithm" data-sortable="true" data-filter-control="select" data-filter-strict-search="true">Algorithm</th>
+      <th data-field="Account" data-sortable="true" data-filter-control="select" data-filter-strict-search="true">Account</th>
+      <th data-field="Duration" data-sortable="true" data-filter-strict-search="false">Running Time</th>
+      <th data-field="Device" data-sortable="true" data-filter-control="select" data-filter-strict-search="false">Device</th>
+      <th data-field="Type" data-sortable="true" data-filter-control="select" data-filter-strict-search="false" data-visible="false">Type</th>
+      <th data-field="CommandLine" data-sortable="true" data-filter-control="input" data-filter-strict-search="false">CommandLine</th>
+      <th data-field="Profit" data-align="right" data-sortable="true" data-formatter="formatBTC" data-title-tooltip = "per 24hrs (estimated)" data-visible="false">Profit</th>
+      <th data-field="Earning" data-align="right" data-sortable="true" data-formatter="formatBTC" data-title-tooltip = "per 24hrs (estimated)" data-visible="false">Earning</th>
+      <th data-field="Profit_Bias" data-align="right" data-sortable="true" data-formatter="formatBTC" data-title-tooltip = "per 24hrs (estimated)" data-visible="false">Profit Bias</th>
+      <th data-field="Earning_Bias" data-align="right" data-sortable="true" data-formatter="formatBTC" data-title-tooltip = "per 24hrs (estimated)" data-visible="false">Earning Bias</th>
+    </tr>
+  </thead>
+</table>
+
+<!-- Start of page scripts -->
+
+<script type="text/javascript">
+  var $table = $('#switchinglog')
+
+  $table.bootstrapTable({
+    // refresh once per interval
+    autoRefreshInterval: (parseInt(config.Interval)),
+    height: (($(window).height()) - $('h1').outerHeight(true) - 185) * 0.985 - 20,
+  })
+
+  $('#clear-log').click(function () {
+    $command = '/functions/switchinglog/clear';
+    $('.modal-body').load($command, function() {
+      $('.modal-title').text($('#clear-log').text());
+      $('#myModal').modal({show:true});
+    });
+  });
+
+  $('#myModal').on('hidden.bs.modal', function () {
+      $table.bootstrapTable('refresh');
+  });
+
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

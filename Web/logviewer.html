@@ -1,0 +1,52 @@
+<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" data-navbaractive="navtaillog" class="h2">System Log</h1>
+</div>
+
+<div class="alert alert-info" role="alert">Shows the last lines of the NemosMiner log</div>
+
+<div id="logtext">
+  <pre id="thePlace"></pre>
+  <div id="theEnd"></div>
+</div>
+
+<!-- Start of page scripts -->
+
+<script type="text/javascript"> 
+
+// Substitute the URL for your server log file here...
+  var url = "/functions/log/get?lines=45";
+
+  if (typeof XMLHttpRequest == "undefined") {
+    // this is only for really ancient browsers
+    XMLHttpRequest = function () {
+      try { return new ActiveXObject("Msxml2.xmlHttp.6.0"); }
+      catch (e1) {}
+      try { return new ActiveXObject("Msxml2.xmlHttp.3.0"); }
+      catch (e2) {}
+      try { return new ActiveXObject("Msxml2.xmlHttp"); }
+      catch (e3) {}
+      throw new Error("This browser does not support xmlHttpRequest.");
+    };
+  }
+
+  function tailf() {
+    var ajax = new XMLHttpRequest();
+    ajax.open("POST", url, true);
+
+    ajax.onreadystatechange = function() {
+      if(ajax.status == 200 && ajax.readyState == 4){
+        document.getElementById("thePlace").innerHTML = ajax.responseText;
+        document.getElementById("theEnd").scrollIntoView()
+      }
+    }
+    ajax.send(null);
+  }
+
+  tailf();
+  setInterval("tailf()", 1000);
+
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

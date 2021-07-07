@@ -1,0 +1,139 @@
+<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" class="h2" data-navbaractive="navallpools">All Pools</h1>
+</div>
+
+<div class="alert alert-info" role="alert">This is the pool data of all configured pools.</div>
+
+<div id="toolbar">
+  <button id="reset-data" class="btn btn-warning">Reset pool stat data</button>
+  <button id="enable" class="btn btn-success">Enable algorithm @ pool</button>
+  <button id="disable" class="btn btn-danger">Disable algorithm @ pool</button>
+</div>
+
+<table id="pools" class="table"
+  data-toolbar="#toolbar"
+  data-click-to-select="true"
+  data-cache="false"
+  data-toggle="table"
+  data-icons="icons"
+  data-show-button-text="true"
+  data-remember-order="true"
+  data-filter-control="true"
+  data-disable-control-when-search="true"
+  data-show-search-clear-button="true"
+  data-show-columns="true"
+  data-show-toggle="true"
+  data-show-refresh="true"
+  data-detail-view="true"
+  data-show-refresh="true"
+  data-auto-refresh="true"
+  data-auto-refresh-status="false"
+  data-detail-formatter="detailFormatter"
+  data-url="/pools"
+  data-sort-name="Algorithm"
+  data-sort-order="asc"
+  data-remember-order="true"
+  >
+
+  <thead>
+    <tr>
+      <th data-field="state" data-checkbox="true"></th>
+      <th data-field="Algorithm" data-sortable="true" data-filter-control="select">Algorithm</th>
+      <th data-field="Name" data-sortable="true" data-filter-control="select">Name</th>
+      <th data-field="Reason" data-sortable="true" data-filter-control="select" data-formatter="formatArrayAsString" data-visible="false">Reason</th>
+      <th data-field="User" data-sortable="true" data-filter-control="select" data-visible="false">Wallet / UserName</th>
+      <th data-field="CoinName" data-sortable="true" data-filter-control="select">CoinName</th>
+      <th data-field="Currency" data-sortable="true" data-filter-control="select">Currency</th>
+      <th data-field="Price" data-align="right" data-sortable="true" data-formatter="formatPrices" data-visible="false">BTC/GH/Day</th>
+      <th data-field="Price_Bias" data-align="right" data-sortable="true" data-formatter="formatPrices">Bias BTC/GH/Day</th>
+      <th data-field="StablePrice" data-align="right" data-sortable="true" data-formatter="formatPrices" data-visible="false">BTC/GH/Day (Week)</th>
+      <th data-field="MarginOfError" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-formatter="formatPercent" data-width=2>MarginOfError</th>
+      <th data-field="Host" data-sortable="true" data-filter-control="input" data-filter-strict-search="false">Host</th>
+      <th data-field="Port" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-width=1>Port&nbsp;</th>
+      <th data-field="EstimateFactor" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-formatter="formatPercent" data-width=2>Estimate Factor</th>
+      <th data-field="EarningsAdjustmentFactor" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-formatter="formatPercent" data-width=2 data-visible="false">Earnings Adjustment Factor</th>
+      <th data-field="Region" data-sortable="true" data-filter-control="select" data-width=1>Region</th>
+      <th data-field="SSL" data-sortable="true" data-filter-control="select" data-width=4>SSL</th>
+      <th data-field="Fee" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-formatter="formatPercent" data-width=1>Fee&nbsp;&nbsp;</th>
+      <th data-field="Workers" data-sortable="true" data-visible="false">Workers</th>
+      <th data-field="DAGsize" data-sortable="true" data-visible="false" data-formatter="formatGB" data-visible="false">DAG Size</th>
+      <th data-field="Epoch" data-sortable="true" data-visible="false" data-visible="false">Epoch</th>
+      <th data-field="BlockHeight" data-sortable="true" data-visible="false" data-visible="false">Block Height</th>
+      <th data-field="Updated" data-sortable="true" data-formatter="formatTimeSince">Last Updated</th>
+      <th data-field="Available" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-visible="false">Available</th>
+      <th data-field="Disabled" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-visible="false">Disabled</th>
+    </tr>
+  </thead>
+</table>
+
+<!-- Start of page scripts -->
+
+<script type='text/javascript'>
+  var $table = $('#pools');
+  var $querysize = 10000;
+
+  $table.bootstrapTable({
+    // refresh once per interval
+    autoRefreshInterval: (parseInt(config.Interval)),
+    height: (($(window).height()) - $('h1').outerHeight(true) - 185) * 0.985 - 20,
+  })
+
+  $('#reset-data').click(function () {
+    var $data = $table.bootstrapTable('getSelections');
+    if ($data.length >= 1) {
+      $data = JSON.stringify($data.map($element => ({Name: $element.Name, Algorithm: $element.Algorithm})));
+      if ($data.length >= $querysize) {
+        alert('Too many objects selected, cannot proceed.\nUnselect some objects and try again.\n\n(Query size: ' + $data.length + '/' + $querysize + ')');
+      }
+      else {
+        $command = '/functions/stat/remove?Pools=' + encodeURIComponent($data);
+        $('.modal-body').load($command, function() {
+          $('.modal-title').text($('#reset-data').text());
+          $('#myModal').modal({show:true});
+        });
+        $table.bootstrapTable('refresh');
+      }
+    }
+  });
+
+  $('#enable').click(function () {
+    var $data = $table.bootstrapTable('getSelections');
+    if ($data.length >= 1) {
+      $data = JSON.stringify($data.map($element => ({Name: $element.Name, Algorithm: $element.Algorithm})));
+      if ($data.length >= $querysize) {
+        alert('Too many objects selected, cannot proceed.\nUnselect some objects and try again.\n\n(Query size: ' + $data.length + '/' + $querysize + ')');
+      }
+      else {
+        $command = '/functions/pool/enable?Pools=' + encodeURIComponent($data);
+        $('.modal-body').load($command, function() {
+          $('.modal-title').text($('#enable').text());
+          $('#myModal').modal({show:true});
+        });
+        $table.bootstrapTable('refresh');
+      }
+    }
+  });
+
+  $('#disable').click(function () {
+    var $data = $table.bootstrapTable('getSelections');
+    if ($data.length >= 1) {
+      $data = JSON.stringify($data.map($element => ({Name: $element.Name, Algorithm: $element.Algorithm})));
+      if ($data.length >= $querysize) {
+        alert('Too many objects selected, cannot proceed.\nUnselect some objects and try again.\n\n(Query size: ' + $data.length + '/' + $querysize + ')');
+      }
+      else {
+        $command = '/functions/pool/disable?Pools=' + encodeURIComponent($data);
+        $('.modal-body').load($command, function() {
+          $('.modal-title').text($('#disable').text());
+          $('#myModal').modal({show:true});
+        });
+        $table.bootstrapTable('refresh');
+      }
+    }
+  });
+
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

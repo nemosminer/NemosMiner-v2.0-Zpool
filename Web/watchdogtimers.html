@@ -1,0 +1,116 @@
+﻿<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" data-navbaractive="navwatchdogtimers" class="h2">Watchdog Timers</h1>
+</div>
+
+<div id="watchdog" class="alert alert-info" role="alert"></div>
+
+<div id="toolbar">
+  <button id="resetwatchdog" class="btn btn-warning">Reset all watchdog timers</button>
+</div>
+
+<table id="watchdogtimers" class="table"
+  data-toolbar="#toolbar"
+  data-click-to-select="true"
+  data-cache="true"
+  data-toggle="table"
+  data-icons="icons"
+  data-show-button-text="true"
+  data-remember-order="true"
+  data-filter-control="true"
+  data-disable-control-when-search="true"
+  data-show-search-clear-button="true"
+  data-show-columns="true"
+  data-show-toggle="true"
+  data-show-refresh="true"
+  data-detail-view="true"
+  data-show-refresh="true"
+  data-auto-refresh="true"
+  data-auto-refresh-status="true"
+  data-detail-formatter="detailFormatter"
+  data-url="/watchdogtimers"
+  data-sort-order="asc"
+  data-sort-name="DeviceName"
+  >
+
+  <thead>
+    <tr>
+      <th data-field="MinerName" data-sortable="true" data-filter-control="input" data-filter-strict-search="false">Miner name</th>
+      <th data-field="MinerBaseName" data-sortable="true" data-filter-control="select" data-filter-strict-search="false" data-visible="false">Base name</th>
+      <th data-field="MinerVersion" data-sortable="true" data-filter-control="select" data-filter-strict-search="false" data-visible="false">Version</th>
+      <th data-field="Algorithm" data-sortable="true" data-filter-control="select">Algorithm</th>
+      <th data-field="PoolName" data-sortable="true" data-filter-control="select">Pool</th>
+      <th data-field="DeviceName" data-sortable="true" data-filter-control="select" data-formatter="formatArrayAsString">Device(s)</th>
+      <th data-field="Kicked" data-sortable="true" data-formatter="formatTimeSince">Last Updated</th>
+    </tr>
+  </thead>
+</table>
+
+<!-- Start of page scripts -->
+
+<script type="text/javascript">
+  var $table = $('#miners');
+
+  $table.bootstrapTable({
+    // refresh once per interval
+    autoRefreshInterval: (parseInt(config.Interval)),
+    height: (($(window).height()) - $('h1').outerHeight(true) - 185) * 0.985 - 20,
+  })
+
+  // Get watchdog expiry time
+  $.ajax({
+    url: '/watchdogexpiration',
+    async: false,
+    success: function(result) {
+      $('#watchdog').text("Shows all watchdog timers (watchdog timers expire after " + result + ").");
+    }
+  });
+
+  $(function () {
+    $("#resetwatchdog").click(function () {
+      $.ajax({
+        url: '/functions/watchdogtimers/reset', success: function (result) {
+          $('.modal-body').text('All watchdog timers will be reset on next cycle. ');
+          $('#myModal').modal({ show: true });
+          $('#watchdogtimers').bootstrapTable('refresh');
+        }
+      })
+    });
+  });
+
+  function formatTimeSince(kicked) {
+    var value = (new Date).getTime() - (new Date(kicked)).getTime();
+    var localtime = new Date().getTime();
+    var lastupdated = '';
+    if (isNaN(value)) {
+      value = localtime - parseInt(kicked.replace("/Date(", "").replace(")/", ""));
+    }
+    seconds = value / 1000
+    interval = Math.floor(seconds / 3600);
+    if (interval > 1) {
+      lastupdated = lastupdated + interval.toString() + ' hours ';
+    } else if (interval == 1) {
+      lastupdated = lastupdated + interval.toString() + ' hour ';
+    }
+    interval = Math.floor(seconds / 60);
+    if (interval > 1) {
+      lastupdated = lastupdated + interval.toString() + ' minutes ';
+    } else if (interval == 1) {
+      lastupdated = lastupdated + interval.toString() + ' minute ';
+    }
+    interval = parseInt(seconds % 60);
+    if (interval > 1) {
+      lastupdated = lastupdated + interval.toString() + ' seconds ';
+    } else if (interval == 1) {
+      lastupdated = lastupdated + interval.toString() + ' second ';
+    }
+    if (lastupdated == '') {
+      return 'just now';
+    } else {
+      return lastupdated + 'ago';
+    }
+  }
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

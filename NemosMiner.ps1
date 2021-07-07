@@ -1,1574 +1,1318 @@
+using module .\Includes\Include.psm1
+
 <#
-Copyright (c) 2018-2019 Nemo and MrPlus
+Copyright (c) 2018-2021 Nemo, MrPlus & UselessGuru
+
 NemosMiner is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-NemosMiner is distributed in the hope that it will be useful,
+NemosMiner is distributed in the hope that it will be useful, 
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+along with this program. If not, see <http://www.gnu.org/licenses/>.
 #>
 
 <#
 Product:        NemosMiner
 File:           NemosMiner.ps1
-version:        3.8.0.0
-version date:   16 May 2019
+Version:        3.9.9.56
+Version date:   04 July 2021
 #>
 
+[CmdletBinding()]
 param(
     [Parameter(Mandatory = $false)]
-    [String]$Wallet = "1QGADhdMRpp9Pk5u5zG1TrHKRrdK5R81TE", 
+    [String[]]$Algorithm = @(), # i.e. @("Ethash", "Equihash", "Cryptonight") etc.
     [Parameter(Mandatory = $false)]
-    [String]$UserName = "nemo", 
+    [Double]$AllowedBadShareRatio = 0.1, # Allowed ratio of bad shares (total / bad) as reported by the miner. If the ratio exceeds the configured threshold then the miner will marked as failed. Allowed values: 0.00 - 1.00. Default of 0 disables this check
     [Parameter(Mandatory = $false)]
-    [String]$WorkerName = "ID=NemosMiner-v3.8.0.0", 
+    [Switch]$AutoStart = $false, # If true NemosMiner will start mining automatically
+    [Parameter(Mandatory = $false)] 
+    [String]$APILogfile = "", # API will log all requests to this file, to disable leave empty
     [Parameter(Mandatory = $false)]
-    [Int]$API_ID = 0, 
+    [Int]$APIPort = 3999, # TCP Port for API & Web GUI
     [Parameter(Mandatory = $false)]
-    [String]$API_Key = "", 
+    [Boolean]$AutoUpdate = $false, # Autoupdate
     [Parameter(Mandatory = $false)]
-    [Int]$Interval = 120, #seconds before between cycles after the first has passed 
+    [Switch]$BalancesTrackerLog = $false, # If true NemosMiner will store all balance tracker data in .\Logs\EarningTrackerLog.csv
     [Parameter(Mandatory = $false)]
-    [Int]$FirstInterval = 30, #seconds of the first cycle of activated or started first time miner
+    [UInt16]$BalancesTrackerPollInterval = 5, # minutes, Interval duration to trigger background task to collect pool balances & earnings dataset to 0 to disable
     [Parameter(Mandatory = $false)]
-    [Int]$StatsInterval = 180, #seconds of current active to gather hashrate if not gathered yet
+    [Switch]$CalculatePowerCost = $true, # If true power usage will be read from miners and calculate power cost, required for true profit calculation
     [Parameter(Mandatory = $false)]
-    [String]$Location = "US", #europe/us/asia
+    [String]$ConfigFile = ".\Config\Config.json", # Config file name
     [Parameter(Mandatory = $false)]
-    [Switch]$SSL = $false, 
+    [Int]$CPUMinerProcessPriority = "-2", # Process priority for CPU miners
     [Parameter(Mandatory = $false)]
-    [Array]$Type = "nvidia", #AMD/NVIDIA/CPU
+    [String]$Currency = (Get-Culture).NumberFormat.CurrencySymbol, # Main 'real-money' currency, i.e. GBP, USD, AUD, NZD ect. Do not use crypto currencies
     [Parameter(Mandatory = $false)]
-    [String]$SelGPUDSTM = "0 1",
+    [Int]$Delay = 0, # seconds between stop and start of miners, use only when getting blue screens on miner switches
     [Parameter(Mandatory = $false)]
-    [String]$SelGPUCC = "0,1",
+    [Switch]$DisableDualAlgoMining = $false, # If true NemosMiner will not use any dual algo miners
     [Parameter(Mandatory = $false)]
-    [Array]$Algorithm = $null, #i.e. Ethash,Equihash,Cryptonight ect.
+    [Switch]$DisableMinerFee = $false, # Set to true to disable miner fees (Note: not all miners support turning off their built in fees, others will reduce the hashrate)
     [Parameter(Mandatory = $false)]
-    [Array]$MinerName = $null, 
+    [Switch]$DisableMinersWithFee = $false, # Set to true to disable all miners which contain fees
     [Parameter(Mandatory = $false)]
-    [Array]$PoolName = $null, 
+    [Switch]$DisableSingleAlgoMining = $false, # If true NemosMiner will not use any single algo miners
     [Parameter(Mandatory = $false)]
-    [Array]$Currency = ("USD"), #i.e. GBP,USD,AUD,NZD ect.
+    [Int]$Donate = 13, # Minutes per Day
     [Parameter(Mandatory = $false)]
-    [Array]$Passwordcurrency = ("BTC"), #i.e. BTC,LTC,ZEC,ETH ect.
+    [Double]$EarningsAdjustmentFactor = 1, # Default factor with which NemosMiner multiplies the prices reported by ALL pools. Allowed values: 0.0 - 1.0
     [Parameter(Mandatory = $false)]
-    [Int]$Donate = 5, #Minutes per Day
+    [Switch]$EstimateCorrection = $false, # If true NemosMiner will multiply the algo price by estimate factor (actual_last24h / estimate_last24h) to counter pool overestimated prices
     [Parameter(Mandatory = $false)]
-    [String]$Proxy = "", #i.e http://192.0.0.1:8080 
+    [String[]]$ExcludeDeviceName = @(), # Array of disabled devices, e.g. @("CPU# 00", "GPU# 02");  by default all devices are enabled
     [Parameter(Mandatory = $false)]
-    [Int]$Delay = 3, #seconds before opening each miner
+    [String[]]$ExcludeMinerName = @(), # List of miners to be excluded; Either specify miner short name, e.g. "PhoenixMiner" (without '-v...') to exclude any version of the miner, or use the full miner name incl. version information
     [Parameter(Mandatory = $false)]
-    [Int]$GPUCount = 1, # Number of GPU on the system
+    [String[]]$ExtraCurrencies = @("USD", "ETC", "mBTC"), # Extra currencies used in balances summary, Enter 'real-world' or crypto currencies, mBTC (milli BTC) is also allowed
     [Parameter(Mandatory = $false)]
-    [Int]$ActiveMinerGainPct = 5, # percent of advantage that active miner has over candidates in term of profit
+    [Int]$GPUMinerProcessPriority = "-1", # Process priority for GPU miners
     [Parameter(Mandatory = $false)]
-    [Float]$MarginOfError = 0, #0.4, # knowledge about the past wont help us to predict the future so don't pretend that Week_Fluctuation means something real
+    [Double]$IdlePowerUsageW = 60, # Watt, Powerusage of idle system. Part of profit calculation.
+    [Parameter(Mandatory = $false)]
+    [Int]$IdleSec = 120, # seconds the system must be idle before mining starts (if MineWhenIdle -eq $true)
+    [Parameter(Mandatory = $false)]
+    [Switch]$IgnoreMinerFee = $false, # If true NM will ignore miner fee for earning & profit calculation
+    [Parameter(Mandatory = $false)]
+    [Switch]$IgnorePoolFee = $false, # If true NM will ignore pool fee for earning & profit calculation
+    [Parameter(Mandatory = $false)]
+    [Switch]$IgnorePowerCost = $false, # If true NM will ignore power cost in best miner selection, instead miners with best earnings will be selected
+    [Parameter(Mandatory = $false)]
+    [Switch]$IncludeOptionalMiners = $true, # If true use the miners in the 'OptionalMiners' directory
+    [Parameter(Mandatory = $false)]
+    [Switch]$IncludeRegularMiners = $true, # If true use the miners in the 'Miners' directory
+    [Parameter(Mandatory = $false)]
+    [Switch]$IncludeLegacyMiners = $true, # If true use the miners in the 'LegacyMiners' directory (Miners based on the original MultiPoolMiner format)
+    [Parameter(Mandatory = $false)]
+    [Int]$Interval = 240, # Average cycle loop duration (seconds) 
+    [Parameter(Mandatory = $false)]
+    [Switch]$LogBalanceAPIResponse = $false, # If true NemosMiner will log the pool balance API data
+    [Parameter(Mandatory = $false)]
+    [String[]]$LogToFile = @("Info", "Warn", "Error", "Verbose", "Debug"), # Log level detail to be written to log file, see Write-Message function
+    [Parameter(Mandatory = $false)]
+    [String[]]$LogToScreen = @("Info", "Warn", "Error", "Verbose", "Debug"), # Log level detail to be written to screen, see Write-Message function
+    [Parameter(Mandatory = $false)]
+    [ValidateRange(0, 1)]
+    [Double]$MinAccuracy = 0.5, # Use only pools with price accuracy greater than the configured value. Allowed values: 0.0 - 1.0 (0% - 100%)
+    [Parameter(Mandatory = $false)]
+    [Int]$MinDataSamples = 20, # Minimum number of hash rate samples required to store hash rate
+    [Parameter(Mandatory = $false)]
+    [Hashtable]$MinDataSamplesAlgoMultiplier = @{ "X25r" = 3 }, # Per algo multiply MinDataSamples by this value
+    [Parameter(Mandatory = $false)]
+    [Switch]$MinerInstancePerDeviceModel = $true, # If true NemosMiner will create separate miner instances per device model. This will increase profitability. 
+    [Parameter(Mandatory = $false)]
+    [Int]$MinerSet = 1, # 0: Benchmark best miner per algorithm and device only; 1: Benchmark optimal miners (more than one per algorithm and device); 2: Benchmark all miners per algorithm and device;
+    [Parameter(Mandatory = $false)]
+    [String]$MiningPoolHubAPIKey = "", # MiningPoolHub API Key (required to retrieve balance information)
+    [Parameter(Mandatory = $false)]
+    [String]$MiningPoolHubUserName = "Nemo", # MiningPoolHub UserName
+    [Parameter(Mandatory = $false)]
+    [Switch]$MineWhenIdle = $false, # If true NemosMiner will start mining only if system is idle for $IdleSec seconds
+    [Parameter(Mandatory = $false)]
+    [Int]$MinWorker = 10, # Minimum workers mining the algorithm at the pool. If less miners are mining the algorithm then the pool will be disabled. This is also a per-pool setting configurable in 'PoolsConfig.json'
+    [Parameter(Mandatory = $false)]
+    [String]$MonitoringServer = "", # Monitoring server hostname, default "https://nemosminer.com"
+    [Parameter(Mandatory = $false)]
+    [String]$MonitoringUser = "", # Unique monitoring user ID 
+    [Parameter(Mandatory = $false)]
+    [String]$NiceHashAPIKey = "", # NiceHash API Key (required to retrieve balance information)
+    [Parameter(Mandatory = $false)]
+    [String]$NiceHashAPISecret = "", # NiceHash API Secret (required to retrieve balance information)
+    [Parameter(Mandatory = $false)]
+    [Switch]$NiceHashWalletIsInternal = $false, # Set to $true if NiceHashWallet is a NiceHash internal wallet (lower pool fees)
+    [Parameter(Mandatory = $false)]
+    [String]$NiceHashWallet = "", # NiceHash wallet, if left empty $Wallet is used
+    [Parameter(Mandatory = $false)]
+    [String]$NiceHashOrganizationId = "", # NiceHash Organization Id (required to retrieve balance information)
+    [Parameter(Mandatory = $false)]
+    [Switch]$OpenFirewallPorts = $true, # If true NemosMiner will open firewall ports for all miners (requires admin rights!)
+    [Parameter(Mandatory = $false)]
+    [String]$PayoutCurrency = "BTC", # i.e. BTC, LTC, ZEC, ETH etc., Default PayoutCurrency for all pools that have no other currency configured, PayoutCurrency is also a per pool setting (to be configured in PoolsConfig.json)
+    [Parameter(Mandatory = $false)]
+    [String]$PoolsConfigFile = ".\Config\PoolsConfig.json", # PoolsConfig file name
+    [Parameter(Mandatory = $false)]
+    [Uint16]$PoolBalancesUpdateInterval = 15, #NemosMiner will udate balances every n minutes to limit pool API requests. Allowed values 0 - 999 minutes. 0 will disable gathering pool balances
+    [Parameter(Mandatory = $false)]
+    [String[]]$PoolName = @("Blockmasters", "MiningPoolHub", "NiceHash", "ZergPoolCoins", "ZPool"), 
+    [Parameter(Mandatory = $false)]
+    [Int]$PoolTimeout = 20, # Time (in seconds) until NemosMiner aborts the pool request (useful if a pool's API is stuck). Note: do not set this value too small or NM will not be able to get any pool data
+    [Parameter(Mandatory = $false)]
+    [Hashtable]$PowerPricekWh = @{"00:00" = 0.26; "12:00" = 0.3 }, # Price of power per kW⋅h (in $Currency, e.g. CHF), valid from HH:mm (24hr format)
+    [Parameter(Mandatory = $false)]
+    [Hashtable]$PowerUsage = @{ }, # Static power usage per device in W, e.g. @{ "GPU#03" = 25, "GPU#04 = 55" } (in case HWiNFO cannot read power usage)
+    [Parameter(Mandatory = $false)]
+    [Double]$ProfitabilityThreshold = -99, # Minimum profit threshold, if profit is less than the configured value (in $Currency, e.g. CHF) mining will stop (except for benchmarking & power usage measuring)
+    [Parameter(Mandatory = $false)]
+    [String]$ProHashingAPIKey = "", # ProHashing API Key (required to retrieve balance information)
+    [Parameter(Mandatory = $false)]
+    [String]$ProHashingMiningMode = "PPS", # Either PPS (Pay Per Share) or PPLNS (Pay per Last N Shares)
+    [Parameter(Mandatory = $false)]
+    [String]$ProHashingUserName = "nemos", # ProHashing UserName, if left empty then $UserName is used
+    [Parameter(Mandatory = $false)]
+    [String]$Proxy = "", # i.e http://192.0.0.1:8080
+    [Parameter(Mandatory = $false)]
+    [String]$Region = "Europe West", # Used to determine pool nearest to you.
+    [Parameter(Mandatory = $false)]
+    [Switch]$ReportToServer = $false, 
+    [Parameter(Mandatory = $false)]
+    [Double]$RunningMinerGainPct = 12, # As lang as no other miner has earning/profit that are n % higher than the current miner it will not switch
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowAccuracy = $true, # Show pool data accuracy column in miner overview
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowAllMiners = $false, # Always show all miners in miner overview (if $false, only the best miners will be shown except when in benchmark / powerusage measurement)
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowEarning = $true, # Show miner earning column in miner overview
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowEarningBias = $true, # Show miner earning bias column in miner overview
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowMinerFee = $true, # Show miner fee column in miner overview (if fees are available, t.b.d. in miner files, Property '[Double]Fee')
+    [Parameter(Mandatory = $false)]
+    [String]$ShowMinerWindows = "minimized", # "minimized": miner window is minimized (default), but accessible; "normal": miner windows are shown normally; "hidden": miners will run as a hidden background task and are not accessible (not recommended)
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowMinerWindowsNormalWhenBenchmarking = $true, # If true Miner window is shown normal when benchmarking (recommended to better see miner messages)
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowPoolBalances = $false, # Display pool balances & earnings information in text window, requires BalancesTrackerPollInterval > 0
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowPoolFee = $true, # Show pool fee column in miner overview
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowPowerCost = $true, # Show Power cost column in miner overview (if power price is available, see PowerPricekWh)
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowProfit = $true, # Show miner profit column in miner overview (if power price is available, see PowerPricekWh)
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowProfitBias = $true, # Show miner profit bias column in miner overview (if power price is available, see PowerPricekWh)
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowPowerUsage = $true, # Show Power usage column in miner overview (if power price is available, see PowerPricekWh)
+    [Parameter(Mandatory = $false)]
+    [Switch]$ShowWorkerStatus = $true, 
+    [Parameter(Mandatory = $false)]
+    [String]$SnakeTailExe = ".\Utils\SnakeTail.exe", # Path to optional external log reader (SnakeTail) [https://github.com/snakefoot/snaketail-net], leave empty to disable
+    [Parameter(Mandatory = $false)]
+    [String]$SnakeTailConfig = ".\Utils\NemosMiner_LogReader.xml", # Path to SnakeTail session config file
+    [Parameter(Mandatory = $false)]
+    [Switch]$SSL = $false, # If true NemosMiner will prefer pools which support SSL connections
+    [Parameter(Mandatory = $false)]
+    [Switch]$StartGUIMinimized = $true, 
+    [Parameter(Mandatory = $false)]
+    [Switch]$StartPaused = $false, # If true NemosMiner will start background jobs (Earnings Tracker etc.), but will not mine
+    [Parameter(Mandatory = $false)]
+    [Int]$SyncWindow = 3, # Cycles. Pool prices must all be all have been collected within the last 'SyncWindow' cycles, otherwise the biased value of older poll price data will get reduced more the older the data is
+    [Parameter(Mandatory = $false)]
+    [Switch]$Transcript = $false, # Enable to write PowerShell transcript files (for debugging)
+    [Parameter(Mandatory = $false)]
+    [Switch]$UsemBTC = $true, # If true NemosMiner will display BTC values in milli BTC
+    [Parameter(Mandatory = $false)]
+    [Switch]$UseMinerTweaks = $false, # If true NemosMiner will apply miner specific tweaks, e.g mild overclock. This may improve profitability at the expense of system stability (Admin rights are required)
     [Parameter(Mandatory = $false)]
     [String]$UIStyle = "Light", # Light or Full. Defines level of info displayed
     [Parameter(Mandatory = $false)]
-    [Bool]$TrackEarnings = $True, # Display earnings information
+    [Double]$UnrealPoolPriceFactor = 2, # Ignore pool if price is more than $Config.UnrealPoolPriceFactor higher than average price of all other pools with same algo & currency
     [Parameter(Mandatory = $false)]
-    [Bool]$Autoupdate = $true, # Autoupdate
+    [Double]$UnrealMinerEarningFactor = 5, # Ignore miner if resulting profit is more than $Config.UnrealPoolPriceFactor higher than average price of all other miners with same algo
     [Parameter(Mandatory = $false)]
-    [String]$ConfigFile = ".\Config\config.json"
+    [Switch]$UseAnycast = $false, # If true pools (currently ZergPool only) will use anycast for best network performance and ping times
+    [Parameter(Mandatory = $false)]
+    [Int[]]$WarmupTimes = @(0, 15), # First value: time (in seconds) until first hash rate sample is valid (default 0, accept first sample), second value: time (in seconds) the miner is allowed to warm up, e.g. to compile the binaries or to get the API ready and providing first data samples before first data samples before it gets stopped and marked as failed (default 15)
+    [Parameter(Mandatory = $false)]
+    [Hashtable]$Wallets = @{ "BTC" = "1QGADhdMRpp9Pk5u5zG1TrHKRrdK5R81TE"; "ETC" = "0x7CF99ec9029A98AFd385f106A93977D8105Fec0f"; "ETH" = "0x92e6F22C1493289e6AD2768E1F502Fc5b414a287" }, 
+    [Parameter(Mandatory = $false)]
+    [Switch]$Watchdog = $true, # if true NemosMiner will automatically put pools and/or miners temporarily on hold it they fail a few times in row
+    [Parameter(Mandatory = $false)]
+    [Int]$WatchdogCount = 3, # Number of watchdog timers
+    [Parameter(Mandatory = $false)]
+    [Switch]$WebGUI = $true, # If true launch Web GUI (recommended)
+    [Parameter(Mandatory = $false)]
+    [String]$WorkerName = "ID=testing"
 )
 
-
-. .\include.ps1
-. .\Core.ps1
+Set-Location (Split-Path $MyInvocation.MyCommand.Path)
 
 @"
 NemosMiner
-Copyright (c) 2018-2019 Nemo and MrPlus
+Copyright (c) 2018-$((Get-Date).Year) Nemo, MrPlus & UselessGuru
 This is free software, and you are welcome to redistribute it
 under certain conditions.
-https://github.com/nemosminer/NemosMiner/blob/master/LICENSE
+https://github.com/Minerx117/NemosMiner/blob/master/LICENSE
 "@
-Write-Host -F Yellow " Copyright and license notices must be preserved."
-@"
-"@
+Write-Host "`nCopyright and license notices must be preserved.`n" -ForegroundColor Yellow
 
-$Global:Config = [hashtable]::Synchronized(@{})
-$Global:Variables = [hashtable]::Synchronized(@{})
-$Global:Variables | Add-Member -Force -MemberType ScriptProperty -Name 'StatusText' -Value { $this._StatusText; $This._StatusText = @() }  -SecondValue { If (!$this._StatusText) {$this._StatusText = @()}; $this._StatusText += $args[0]; $Variables | Add-Member -Force @{RefreshNeeded = $True} }
-$Global:Variables | Add-Member -Force @{Started = $False}
-$Global:Variables | Add-Member -Force @{Paused = $False}
-$Global:Variables | Add-Member -Force @{RestartCycle = $False}
+# Load Branding
+$Global:Branding = [PSCustomObject]@{ 
+    LogoPath     = "https://raw.githubusercontent.com/Minerx117/UpDateData/master/NM.png"
+    BrandName    = "NemosMiner"
+    BrandWebSite = "https://nemosminer.com"
+    ProductLabel = "NemosMiner"
+    Version      = [System.Version]"3.9.9.56"
+}
 
-Function Form_Load {
-    $MainForm.Text = "$($Variables.CurrentProduct) $($Variables.CurrentVersion)"
-    $LabelBTCD.Text = "$($Variables.CurrentProduct) $($Variables.CurrentVersion)"
-    $MainForm.Number = 0
-    $TimerUI.Interval = 50
-    $TimerUI.Add_Tick( {
-            trap {
-                $PSItem.ToString() | out-file .\logs\excepUI.txt -Append
+If ($PSVersiontable.PSVersion -lt [System.Version]"7.0.0") { 
+    Write-Host "`nUnsupported PowerShell version $($PSVersiontable.PSVersion.ToString()) detected.`n$($Branding.BrandName) requires at least PowerShell version 7.0.0 which can be downloaded from https://github.com/PowerShell/powershell/releases.`n`n" -ForegroundColor Red
+    Start-Sleep -Seconds 30
+    Exit
+}
+
+Try { 
+    Add-Type -Path ".\Includes\~OpenCL_$($PSVersionTable.PSVersion.ToString()).dll" -ErrorAction Stop
+}
+Catch { 
+    Remove-Item ".\Includes\~OpenCL_$($PSVersionTable.PSVersion.ToString()).dll" -Force -ErrorAction Ignore
+    Add-Type -Path ".\Includes\OpenCL\*.cs" -OutputAssembly ".\Includes\~OpenCL_$($PSVersionTable.PSVersion.ToString()).dll"
+    Add-Type -Path ".\Includes\~OpenCL_$($PSVersionTable.PSVersion.ToString()).dll"
+}
+
+Try { 
+    Add-Type -Path ".\Includes\~CPUID_$($PSVersionTable.PSVersion.ToString()).dll" -ErrorAction Stop
+}
+Catch { 
+    Remove-Item ".\Includes\~CPUID_$($PSVersionTable.PSVersion.ToString()).dll" -Force -ErrorAction Ignore
+    Add-Type -Path ".\Includes\CPUID.cs" -OutputAssembly ".\Includes\~CPUID_$($PSVersionTable.PSVersion.ToString()).dll"
+    Add-Type -Path ".\Includes\~CPUID_$($PSVersionTable.PSVersion.ToString()).dll"
+}
+
+# Create directories
+If (-not (Test-Path -Path ".\Config" -PathType Container)) { New-Item -Path . -Name "Config" -ItemType Directory | Out-Null }
+If (-not (Test-Path -Path ".\Logs" -PathType Container)) { New-Item -Path . -Name "Logs" -ItemType Directory | Out-Null }
+
+# Initialize global variables
+New-Variable Config ([Hashtable]::Synchronized( @{ } )) -Scope "Global" -Force -ErrorAction Stop
+New-Variable Stats ([Hashtable]::Synchronized( @{ } )) -Scope "Global" -Force -ErrorAction Stop
+New-Variable Variables ([Hashtable]::Synchronized( @{ } )) -Scope "Global" -Force -ErrorAction Stop
+
+$Variables.Miners = [Miner[]]
+$Variables.Pools = [Miner]::Pools
+
+# Expand paths
+$Variables.MainPath = (Split-Path $MyInvocation.MyCommand.Path)
+$Variables.LogFile = "$($Variables.MainPath)\Logs\NemosMiner_$(Get-Date -Format "yyyy-MM-dd").log"
+$Variables.ConfigFile = "$($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ConfigFile))"
+$Variables.PoolsConfigFile = "$($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PoolsConfigFile))"
+$Variables.BalancesTrackerConfigFile = "$($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Config.BalancesTrackerConfigFile))"
+
+$Variables.CurrentProduct = $Branding.ProductLabel
+$Variables.CurrentVersion = $Branding.Version
+
+# Get command line parameters, required in Read-Config
+$AllCommandLineParameters = [Ordered]@{ }
+$MyInvocation.MyCommand.Parameters.Keys | Where-Object { $_ -notin @("ConfigFile", "PoolsConfigFile", "BalancesTrackerConfigFile", "Verbose", "Debug", "ErrorAction", "WarningAction", "InformationAction", "ErrorVariable", "WarningVariable", "InformationVariable", "OutVariable", "OutBuffer", "PipelineVariable") } | Sort-Object | ForEach-Object { 
+    $AllCommandLineParameters.$_ = Get-Variable $_ -ValueOnly -ErrorAction SilentlyContinue
+    If ($AllCommandLineParameters.$_ -is [Switch]) { $AllCommandLineParameters.$_ = [Boolean]$AllCommandLineParameters.$_ }
+}
+$Variables.AllCommandLineParameters = $AllCommandLineParameters
+
+# Load algorithm list
+$Variables.Algorithms = Get-Content -Path ".\Includes\Algorithms.txt" -ErrorAction Ignore | ConvertFrom-Json -ErrorAction Ignore
+If (-not $Variables.Algorithms) { 
+    Write-Message -Level Error "Terminating Error - Cannot continue!`nFile '$($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.\Includes\Algorithms.txt'))' is not a valid JSON file. Please restore it from your original download." -Console
+    Start-Sleep -Seconds 10
+    Exit
+}
+# Load regions list
+$Variables.Regions = Get-Content -Path ".\Includes\Regions.txt" -ErrorAction Ignore | ConvertFrom-Json -ErrorAction Ignore
+If (-not $Variables.Regions) { 
+    Write-Message -Level Error "Terminating Error - Cannot continue!`nFile '$($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.\Includes\Regions.txt'))' is not a valid JSON file. Please restore it from your original download." -Console
+    Start-Sleep -Seconds 10
+    Exit
+}
+# Verify pool data
+Try { [Void](Get-Content -Path ".\Includes\PoolData.json" -ErrorAction Ignore | ConvertFrom-Json -ErrorAction Ignore) }
+Catch { 
+    Write-Message -Level Error "Terminating Error - Cannot continue!`nFile '$($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath('.\Includes\PoolData.json'))' is not a valid JSON file. Please restore it from your original download." -Console
+    Start-Sleep -Seconds 10
+    Exit
+}
+
+# Read configuration
+Read-Config -ConfigFile $Variables.ConfigFile
+
+$AllCommandLineParameters | ForEach-Object { 
+    Remove-Variable $_ -ErrorAction SilentlyContinue
+}
+
+# Start transcript log
+If ($Config.Transcript -eq $true) { Start-Transcript ".\Logs\NemosMiner_$(Get-Date -Format "yyyy-MM-dd_HH-mm-ss").log" }
+
+Write-Message "Starting $($Branding.ProductLabel)® v$($Variables.CurrentVersion) © 2017-$((Get-Date).Year) Nemo, MrPlus and UselessGuru"
+If (-not $Variables.FreshConfig) { Write-Message "Using configuration file '$($Variables.ConfigFile)'." }
+
+# Start Log reader (SnakeTail) [https://github.com/snakefoot/snaketail-net]
+If ((Test-Path $Config.SnakeTailExe -PathType Leaf -ErrorAction Ignore) -and (Test-Path $Config.SnakeTailConfig -PathType Leaf -ErrorAction Ignore)) { 
+    $Variables.SnakeTailConfig = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Config.SnakeTailConfig)
+    $Variables.SnakeTailExe = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Config.SnakeTailExe)
+    If (-not (Get-CimInstance CIM_Process | Where-Object ExecutablePath -EQ $Variables.SnakeTailExe)) { 
+        & "$($Variables.SnakeTailExe)" $Variables.SnakeTailConfig
+    }
+}
+
+#Prerequisites check
+Write-Message -Level Verbose "Verifying pre-requisites..." -Console
+$Prerequisites = @(
+    "$env:SystemRoot\System32\MSVCR120.dll",
+    "$env:SystemRoot\System32\VCRUNTIME140.dll",
+    "$env:SystemRoot\System32\VCRUNTIME140_1.dll"
+)
+
+If ($PrerequisitesMissing = @($Prerequisites | Where-Object { -not (Test-Path $_ -PathType Leaf) })) {
+    $PrerequisitesMissing | ForEach-Object { Write-Message -Level Warn "$_ is missing." -Console }
+    Write-Message -Level Error "Please install the required runtime modules. Download and extract" -Console
+    Write-Message -Level Error "https://github.com/Minerx117/Visual-C-Runtimes-All-in-One-Sep-2019/releases/download/sep2019/Visual-C-Runtimes-All-in-One-Sep-2019.zip" -Console
+    Write-Message -Level Error "and run 'install_all.bat'."
+    Start-Sleep -Seconds 10
+    Exit
+}
+Else { Write-Message -Level Verbose "Pre-requisites check OK." -Console }
+Remove-Variable PrerequisitesMissing, Prerequisites
+
+# Check if new version is available
+Get-NMVersion
+
+# Update config file to include all new config items
+If ($Variables.AllCommandLineParameters -and (-not $Config.ConfigFileVersion -or [System.Version]::Parse($Config.ConfigFileVersion) -lt $Variables.CurrentVersion )) { 
+    Update-ConfigFile -ConfigFile $Variables.ConfigFile
+}
+
+Write-Message -Level Verbose "Loading device information..."
+$Variables.SupportedDeviceVendors = @("AMD", "INTEL", "NVIDIA")
+$Variables.Devices = [Device[]](Get-Device -Refresh)
+$Variables.Devices | Where-Object { $_.Vendor -notin $Variables.SupportedDeviceVendors } | ForEach-Object { $_.State = [DeviceState]::Unsupported; $_.Status = "Disabled (Unsupported Vendor: '$($_.Vendor)')" }
+$Variables.Devices | Where-Object Name -In $Config.ExcludeDeviceName | ForEach-Object { $_.State = [DeviceState]::Disabled; $_.Status = "Disabled (ExcludeDeviceName: '$($_.Name)')" }
+
+# MinerInstancePerDeviceModel: Default to $true if more than one device model per vendor
+If ($Variables.FreshConfig -eq $true) { $Config.MinerInstancePerDeviceModel = ($Variables.Devices | Group-Object Vendor  | ForEach-Object { ($_.Group.Model | Sort-Object -Unique).Count } | Measure-Object -Maximum).Maximum -gt 1 }
+
+Write-Host "Setting variables..." -ForegroundColor Yellow
+$Variables.BrainJobs = @{ }
+$Variables.IsLocalAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")
+$Variables.Miners = [Miner[]]@()
+$Variables.Pools = [Pool[]]@()
+$Variables.ScriptStartTime = (Get-Date).ToUniversalTime()
+$Variables.AvailableCommandLineParameters = @($AllCommandLineParameters.Keys | Sort-Object)
+$Variables.MyIP = (Get-NetIPConfiguration | Where-Object IPv4DefaultGateway).IPv4Address.IPAddress
+$Variables.DriverVersion = @{ }
+$Variables.DriverVersion | Add-Member AMD ((($Variables.Devices | Where-Object { $_.Type -EQ "GPU" -and $_.Vendor -eq "AMD" }).OpenCL.DriverVersion | Select-Object -Index 0) -split ' ' | Select-Object -Index 0)
+$Variables.DriverVersion | Add-Member NVIDIA ((($Variables.Devices | Where-Object { $_.Type -EQ "GPU" -and $_.Vendor -eq "NVIDIA" }).OpenCL.DriverVersion | Select-Object -Index 0) -split ' ' | Select-Object -Index 0)
+$Variables.MiningStatus = $Variables.NewMiningStatus = "Stopped"
+$Variables.Strikes = 3
+$Variables.WatchdogTimers = @()
+$Variables.StatStarts = @()
+
+If (Test-Path -Path ".\Logs\EarningsChartData.json" -PathType Leaf) { $Variables.EarningsChartData = Get-Content ".\Logs\EarningsChartData.json" -ErrorAction Ignore | ConvertFrom-Json -ErrorAction Ignore }
+
+# Rename existing switching log
+If (Test-Path -Path ".\Logs\SwitchingLog.csv" -PathType Leaf) { Get-ChildItem -Path ".\Logs\SwitchingLog.csv" -File | Rename-Item -NewName { "SwitchingLog$($_.LastWriteTime.toString('_yyyy-MM-dd_HH-mm-ss')).csv" } }
+# Keep only the last 3 logs
+Get-ChildItem ".\Logs\SwitchingLog_*.csv" | Sort-Object | Select-Object -SkipLast 3 | Remove-Item -Force -Recurse
+
+
+If ($env:CUDA_DEVICE_ORDER -ne 'PCI_BUS_ID') { $env:CUDA_DEVICE_ORDER = 'PCI_BUS_ID' } # Align CUDA id with nvidia-smi order
+If ($env:GPU_FORCE_64BIT_PTR -ne 1) { $env:GPU_FORCE_64BIT_PTR = 1 }                   # For AMD
+If ($env:GPU_MAX_HEAP_SIZE -ne 100) { $env:GPU_MAX_HEAP_SIZE = 100 }                   # For AMD
+If ($env:GPU_USE_SYNC_OBJECTS -ne 1) { $env:GPU_USE_SYNC_OBJECTS = 1 }                 # For AMD
+If ($env:GPU_MAX_ALLOC_PERCENT -ne 100) { $env:GPU_MAX_ALLOC_PERCENT = 100 }           # For AMD
+If ($env:GPU_SINGLE_ALLOC_PERCENT -ne 100) { $env:GPU_SINGLE_ALLOC_PERCENT = 100 }     # For AMD
+If ($env:GPU_MAX_WORKGROUP_SIZE -ne 256) { $env:GPU_MAX_WORKGROUP_SIZE = 256 }         # For AMD
+
+If ($Config.AutoStart) { 
+    If ($Config.StartPaused) { 
+        $Variables.NewMiningStatus = "Paused"
+    }
+    Else { 
+        $Variables.NewMiningStatus = "Running"
+    }
+    # Trigger start mining in TimerUITick
+    $Variables.RestartCycle = $true
+}
+
+Write-Host "Importing modules..." -ForegroundColor Yellow
+Import-Module NetSecurity -ErrorAction SilentlyContinue
+Import-Module Defender -ErrorAction SilentlyContinue
+Import-Module "$env:Windir\System32\WindowsPowerShell\v1.0\Modules\NetSecurity\NetSecurity.psd1" -ErrorAction SilentlyContinue
+Import-Module "$env:Windir\System32\WindowsPowerShell\v1.0\Modules\Defender\Defender.psd1" -ErrorAction SilentlyContinue
+
+# Unblock files
+If (Get-Command "Unblock-File" -ErrorAction SilentlyContinue) { Get-ChildItem -Path . -Recurse | Unblock-File }
+If ((Get-Command "Get-MpPreference" -ErrorAction Ignore) -and (Get-MpComputerStatus -ErrorAction Ignore) -and (Get-MpPreference).ExclusionPath -notcontains (Convert-Path .)) { 
+    Start-Process (@{ desktop = "PowerShell"; core = "pwsh" }.$PSEdition) "-Command Import-Module '$env:Windir\System32\WindowsPowerShell\v1.0\Modules\Defender\Defender.psd1'
+    Add-MpPreference -ExclusionPath '$(Convert-Path .)'" -Verb runAs
+}
+
+If ($Config.WebGUI -eq $true) { 
+    Write-Message -Level Verbose "Initializing API & Web GUI on 'http://localhost:$($Config.APIPort)'..."
+    Initialize-API
+}
+
+Function Global:TimerUITick { 
+    $TimerUI.Enabled = $false
+
+    $Variables.LogFile = "$($Variables.MainPath)\Logs\NemosMiner_$(Get-Date -Format "yyyy-MM-dd").log"
+
+    # If something (pause button, idle timer) has set the RestartCycle flag, stop and start mining to switch modes immediately
+    If ($Variables.RestartCycle) { 
+
+        If ($Variables.NewMiningStatus -eq "Stopped") { 
+            $ButtonPause.Enabled = $false
+            $ButtonStart.Enabled = $false
+            $ButtonStop.Enabled = $false
+
+            Stop-Mining
+            Stop-IdleMining
+            Stop-BrainJob
+            Stop-BalancesTracker
+
+            $Variables.Summary = ""
+            $LabelMiningStatus.Text = "Stopped | $($Branding.ProductLabel) $($Variables.CurrentVersion)"
+            $LabelMiningStatus.ForeColor = [System.Drawing.Color]::Red
+            Clear-Host
+            Write-Message -Level Info "$($Branding.ProductLabel) is idle." -Console
+
+            $ButtonPause.Enabled = $true
+            $ButtonStart.Enabled = $true
+        }
+        ElseIf ($Variables.NewMiningStatus -eq "Paused") { 
+            If ($Variables.MiningStatus -ne "Paused") { 
+                $ButtonPause.Enabled = $false
+                $ButtonStart.Enabled = $false
+                $ButtonStop.Enabled = $false
+
+                If ($Variables.MiningStatus -eq "Running") { 
+                    Stop-Mining
+                    Stop-IdleMining
+                }
+                Else { 
+                    Initialize-Application
+                    Start-BrainJob
+                    Start-BalancesTracker
+                }
+                Clear-Host
+                Write-Message -Level Info "Mining is paused. BrainPlus and Earning tracker running." -Console
+
+                $ButtonStop.Enabled = $true
+                $ButtonStart.Enabled = $true
+
+                $LabelMiningStatus.Text = "Paused | $($Branding.ProductLabel) $($Variables.CurrentVersion)"
+                $LabelMiningStatus.ForeColor = [System.Drawing.Color]::Blue
+                $EarningsDGV.DataSource = [System.Collections.ArrayList]@()
+                $RunningMinersDGV.DataSource = [System.Collections.ArrayList]@()
+                $WorkersDGV.DataSource = [System.Collections.ArrayList]@()
+                $TimerUI.Stop
             }
-            $TimerUI.Stop()
-            # If something (pause button, idle timer) has set the RestartCycle flag, stop and start mining to switch modes immediately
-            If ($Variables.RestartCycle) {
-                $Variables.RestartCycle = $False
+        }
+        ElseIf ($Variables.NewMiningStatus -eq "Running") {
+
+            $Variables.UIStyle = $Config.UIStyle
+            $Variables.ShowAllMiners = $Config.ShowAllMiners
+            $Variables.ShowPoolBalances = $Config.ShowPoolBalances
+
+            $ButtonStop.Enabled = $true
+            $ButtonStart.Enabled = $false
+            $ButtonPause.Enabled = $true
+            If ($Variables.MiningStatus -ne "Running") { 
+                Clear-Host
+                Write-Host "Mining processes started."
+                Initialize-Application
+                Start-BrainJob
+                Start-BalancesTracker
+            }
+            If ($Config.MineWhenIdle) { 
                 Stop-Mining
+                If (-not $Variables.IdleRunspace) { Start-IdleMining }
+            }
+            Else { 
+
+                Stop-IdleMining
                 Start-Mining
+
+                $ButtonStop.Enabled = $true
+                $ButtonPause.Enabled = $true
+
+                $LabelMiningStatus.Text = "Running | $($Branding.ProductLabel) $($Variables.CurrentVersion)"
+                $LabelMiningStatus.ForeColor = [System.Drawing.Color]::Green
             }
-            If ($Variables.RefreshNeeded -and $Variables.Started) {
-                If (!$Variables.EndLoop) {Update-Status($Variables.StatusText)}
-                # $TimerUI.Interval = 1
+        }
+        $Variables.RestartCycle = $false
+        $Variables.MiningStatus = $Variables.NewMiningStatus
+    }
 
-                Start-ChildJobs
+    If ($Variables.RefreshNeeded -and $Variables.MiningStatus -eq "Running") { 
+        $host.UI.RawUI.WindowTitle = $MainForm.Text = "$($Branding.ProductLabel) $($Variables.CurrentVersion) Runtime: {0:dd} days {0:hh} hrs {0:mm} mins Path: $($Variables.Mainpath)" -f ([TimeSpan]((Get-Date).ToUniversalTime() - $Variables.ScriptStartTime))
 
-                $Variables.EarningsTrackerJobs | ? {$_.state -eq "Running"} | foreach {
-                    $EarnTrack = $_ | Receive-Job
-                    If ($EarnTrack) {
-                        $Variables.EarningsPool = (($EarnTrack[($EarnTrack.Count - 1)]).Pool)
-                        # $Variables.Earnings.$Variables.EarningsPool = $EarnTrack[($EarnTrack.Count - 1)]
-                        $Variables.Earnings.(($EarnTrack[($EarnTrack.Count - 1)]).Pool) = $EarnTrack[($EarnTrack.Count - 1)]
-                        rv EarnTrack
-                    }
-                }
+        If ($Variables.EndLoop) { 
 
-                If ((compare -ReferenceObject $CheckedListBoxPools.Items -DifferenceObject ((Get-ChildItem ".\Pools").BaseName | sort -Unique) | ? {$_.SideIndicator -eq "=>"}).InputObject -gt 0) {
-                    (compare -ReferenceObject $CheckedListBoxPools.Items -DifferenceObject ((Get-ChildItem ".\Pools").BaseName | sort -Unique) | ? {$_.SideIndicator -eq "=>"}).InputObject | % { if ($_ -ne $null) {}$CheckedListBoxPools.Items.AddRange($_)}
-                    $Config.PoolName | foreach {$CheckedListBoxPools.SetItemChecked($CheckedListBoxPools.Items.IndexOf($_), $True)}
-                }
-                $Variables | Add-Member -Force @{InCycle = $True}
-                # $MainForm.Number+=1
-                $MainForm.Text = $Variables.CurrentProduct + " " + $Variables.CurrentVersion + " Runtime " + ("{0:dd\ \d\a\y\s\ hh\:mm}" -f ((get-date) - $Variables.ScriptStartDate)) + " Path: " + (Split-Path $script:MyInvocation.MyCommand.Path)
-                $host.UI.RawUI.WindowTitle = $Variables.CurrentProduct + " " + $Variables.CurrentVersion + " Runtime " + ("{0:dd\ \d\a\y\s\ hh\:mm}" -f ((get-date) - $Variables.ScriptStartDate)) + " Path: " + (Split-Path $script:MyInvocation.MyCommand.Path)
-
-                $SwitchingDisplayTypes = @()
-                $SwitchingPageControls | foreach {if ($_.Checked) {$SwitchingDisplayTypes += $_.Tag}}
-                # If (Test-Path ".\Logs\switching.log"){$SwitchingArray = [System.Collections.ArrayList]@(Import-Csv ".\Logs\switching.log" | ? {$_.Type -in $SwitchingDisplayTypes} | Select -Last 13)}
-                # If (Test-Path ".\Logs\switching.log"){$SwitchingArray = [System.Collections.ArrayList]@(Import-Csv ".\Logs\switching.log" | ? {$_.Type -in $SwitchingDisplayTypes} | Select -Last 13)}
-                If (Test-Path ".\Logs\switching.log") {$SwitchingArray = [System.Collections.ArrayList]@(@((get-content ".\Logs\switching.log" -First 1) , (get-content ".\logs\switching.log" -last 50)) | ConvertFrom-Csv | ? {$_.Type -in $SwitchingDisplayTypes} | Select -Last 13)}
-                $SwitchingDGV.DataSource = $SwitchingArray
-        
-                If ($Variables.Earnings -and $Config.TrackEarnings) {
-                    $DisplayEarnings = [System.Collections.ArrayList]@($Variables.Earnings.Values | select @(
-                            @{Name = "Pool"; Expression = {$_.Pool}},
-                            @{Name = "Trust"; Expression = {"{0:P0}" -f $_.TrustLevel}},
-                            @{Name = "Balance"; Expression = {$_.Balance}},
-                            # @{Name="Unpaid";Expression={$_.total_unpaid}},
-                            @{Name = "BTC/D"; Expression = {"{0:N8}" -f ($_.BTCD)}},
-                            @{Name = "mBTC/D"; Expression = {"{0:N3}" -f ($_.BTCD * 1000)}},
-                            @{Name = "Est. Pay Date"; Expression = {if ($_.EstimatedPayDate -is 'DateTime') {$_.EstimatedPayDate.ToShortDateString()} else {$_.EstimatedPayDate}}},
-                            @{Name = "PaymentThreshold"; Expression = {"$($_.PaymentThreshold) ($('{0:P0}' -f $($_.Balance / $_.PaymentThreshold)))"}},
-                            @{Name = "Wallet"; Expression = {$_.Wallet}}
-                        ) | Sort "BTC/D" -Descending)
-                    $EarningsDGV.DataSource = [System.Collections.ArrayList]@($DisplayEarnings)
-                    $EarningsDGV.ClearSelection()
-                }
-        
-                If ($Variables.Miners) {
-                    $DisplayEstimations = [System.Collections.ArrayList]@($Variables.Miners | Select @(
-                            @{Name = "Miner"; Expression = {$_.Name}},
-                            @{Name = "Algorithm"; Expression = {$_.HashRates.PSObject.Properties.Name}},
-                            @{Name = "Speed"; Expression = {$_.HashRates.PSObject.Properties.Value | ForEach {if ($_ -ne $null) {"$($_ | ConvertTo-Hash)/s"}else {"Benchmarking"}}}},
-                            @{Name = "mBTC/Day"; Expression = {$_.Profits.PSObject.Properties.Value * 1000 | ForEach {if ($_ -ne $null) {$_.ToString("N3")}else {"Benchmarking"}}}},
-                            @{Name = "BTC/Day"; Expression = {$_.Profits.PSObject.Properties.Value | ForEach {if ($_ -ne $null) {$_.ToString("N5")}else {"Benchmarking"}}}},
-                            @{Name = "BTC/GH/Day"; Expression = {$_.Pools.PSObject.Properties.Value.Price | ForEach {($_ * 1000000000).ToString("N5")}}},
-                            @{Name = "Pool"; Expression = {$_.Pools.PSObject.Properties.Value | ForEach {"$($_.Name)-$($_.Info)"}}}
-                        ) | sort "mBTC/Day" -Descending)
-                    $EstimationsDGV.DataSource = [System.Collections.ArrayList]@($DisplayEstimations)
-                }
-                $EstimationsDGV.ClearSelection()
-
-                $SwitchingDGV.ClearSelection()
-
-                If ($Variables.Workers -and $Config.ShowWorkerStatus) {
-                    $DisplayWorkers = [System.Collections.ArrayList]@($Variables.Workers | select @(
-                            @{Name = "Worker"; Expression = {$_.worker}},
-                            @{Name = "Status"; Expression = {$_.status}},
-                            @{Name = "Last Seen"; Expression = {$_.timesincelastreport}},
-                            @{Name = "Version"; Expression = {$_.version}},
-                            @{Name = "Est. BTC/Day"; Expression = {[decimal]$_.profit}},
-                            @{Name = "Miner"; Expression = {$_.data.name -join ','}},
-                            @{Name = "Pool"; Expression = {$_.data.pool -join ','}},
-                            @{Name = "Algo"; Expression = {$_.data.algorithm -join ','}},
-                            @{Name = "Speed"; Expression = {if ($_.data.currentspeed) {($_.data.currentspeed | ConvertTo-Hash) -join ','} else {""}}},
-                            @{Name = "Benchmark Speed"; Expression = {if ($_.data.estimatedspeed) {($_.data.estimatedspeed | ConvertTo-Hash) -join ','} else {""}}}
-                        ) | Sort "Worker Name")
-                    $WorkersDGV.DataSource = [System.Collections.ArrayList]@($DisplayWorkers)
-
-                    # Set row color
-                    $WorkersDGV.Rows | ForEach-Object {
-                        if ($_.DataBoundItem.Status -eq "Offline") {
-                            $_.DefaultCellStyle.Backcolor = [System.Drawing.Color]::FromArgb(255, 213, 142, 176)
-                        }
-                        elseif ($_.DataBoundItem.Status -eq "Paused") {
-                            $_.DefaultCellStyle.Backcolor = [System.Drawing.Color]::FromArgb(255, 247, 252, 168)
-                        }
-                        elseif ($_.DataBoundItem.Status -eq "Running") {
-                            $_.DefaultCellStyle.Backcolor = [System.Drawing.Color]::FromArgb(255, 127, 191, 144)
-                        }
-                        else {
-                            $_.DefaultCellStyle.Backcolor = [System.Drawing.Color]::FromArgb(255, 255, 255, 255)
-                        }
-                    }
-
-                    $WorkersDGV.ClearSelection()
-                    $LabelMonitoringWorkers.text = "Worker Status - Updated $($Variables.WorkersLastUpdated.ToString())"
-                }
-
-                If ($Variables.ActiveMinerPrograms) {
-                    $RunningMinersDGV.DataSource = [System.Collections.ArrayList]@($Variables.ActiveMinerPrograms | ? {$_.Status -eq "Running"} | select Type, Algorithms, Name, @{Name = "HashRate"; Expression = {"$($_.HashRate | ConvertTo-Hash)/s"}}, @{Name = "Stratum"; Expression = {"$($_.Arguments.Split(' ') | ?{$_ -match 'stratum'})"}} | sort Type)
-                    $RunningMinersDGV.ClearSelection()
-        
-                    [Array] $processRunning = $Variables.ActiveMinerPrograms | Where { $_.Status -eq "Running" }
-                    If ($ProcessRunning -eq $null) {
-                        # Update-Status("No miner running")
-                    }
-                }
-                $LabelBTCPrice.text = If ($Variables.Rates.$Currency -gt 0) {"BTC/$($Config.Currency) $($Variables.Rates.($Config.Currency))"}
-                $Variables | Add-Member -Force @{InCycle = $False}
-
-                If ($Variables.EndLoop) {
-                    If ($Variables.Earnings.Values -ne $Null) {
-                        $LabelBTCD.Text = "Avg: " + ("{0:N6}" -f ($Variables.Earnings.Values | measure -Property BTCD -Sum).sum) + " BTC/D   |   " + ("{0:N3}" -f (($Variables.Earnings.Values | measure -Property BTCD -Sum).sum * 1000)) + " mBTC/D"
-                
-                        $LabelEarningsDetails.Lines = @()
-                        # If ((($Variables.Earnings.Values | measure -Property Growth1 -Sum).sum*1000*24) -lt ((($Variables.Earnings.Values | measure -Property BTCD -Sum).sum*1000)*0.999)) {
-                        # $LabelEarningsDetails.ForeColor = "Red" } else { $LabelEarningsDetails.ForeColor = "Green" }
-                        $TrendSign = switch ([Math]::Round((($Variables.Earnings.Values | measure -Property Growth1 -Sum).sum * 1000 * 24), 3) - [Math]::Round((($Variables.Earnings.Values | measure -Property BTCD -Sum).sum * 1000), 3)) {
-                            {$_ -eq 0}
-                            {"="}
-                            {$_ -gt 0}
-                            {">"}
-                            {$_ -lt 0}
-                            {"<"}
-                        }
-                        $LabelEarningsDetails.Lines += "Last  1h: " + ("{0:N3}" -f (($Variables.Earnings.Values | measure -Property Growth1 -Sum).sum * 1000 * 24)) + " mBTC/D " + $TrendSign
-                        $TrendSign = switch ([Math]::Round((($Variables.Earnings.Values | measure -Property Growth6 -Sum).sum * 1000 * 4), 3) - [Math]::Round((($Variables.Earnings.Values | measure -Property BTCD -Sum).sum * 1000), 3)) {
-                            {$_ -eq 0}
-                            {"="}
-                            {$_ -gt 0}
-                            {">"}
-                            {$_ -lt 0}
-                            {"<"}
-                        }
-                        $LabelEarningsDetails.Lines += "Last  6h: " + ("{0:N3}" -f (($Variables.Earnings.Values | measure -Property Growth6 -Sum).sum * 1000 * 4)) + " mBTC/D " + $TrendSign
-                        $TrendSign = switch ([Math]::Round((($Variables.Earnings.Values | measure -Property Growth24 -Sum).sum * 1000), 3) - [Math]::Round((($Variables.Earnings.Values | measure -Property BTCD -Sum).sum * 1000), 3)) {
-                            {$_ -eq 0}
-                            {"="}
-                            {$_ -gt 0}
-                            {">"}
-                            {$_ -lt 0}
-                            {"<"}
-                        }
-                        $LabelEarningsDetails.Lines += "Last 24h: " + ("{0:N3}" -f (($Variables.Earnings.Values | measure -Property Growth24 -Sum).sum * 1000)) + " mBTC/D " + $TrendSign
-                        rv TrendSign
-                    }
-                    else {
-                        $LabelBTCD.Text = "Waiting data from pools."
-                        $LabelEarningsDetails.Lines = @()
-                    }
-        
-                    if (!(IsLoaded(".\Include.ps1"))) {. .\Include.ps1; RegisterLoaded(".\Include.ps1")}
-                    if (!(IsLoaded(".\Core.ps1"))) {. .\Core.ps1; RegisterLoaded(".\Core.ps1")}
-        
-                    $Variables | Add-Member -Force @{CurrentProduct = (Get-Content .\Version.json | ConvertFrom-Json).Product}
-                    $Variables | Add-Member -Force @{CurrentVersion = [Version](Get-Content .\Version.json | ConvertFrom-Json).Version}
-                    $Variables | Add-Member -Force @{CurrentVersionAutoUpdated = (Get-Content .\Version.json | ConvertFrom-Json).AutoUpdated.Value}
-                    if ((Get-Content .\Version.json | ConvertFrom-Json).AutoUpdated -and $LabelNotifications.Lines[$LabelNotifications.Lines.Count - 1] -ne "Auto Updated on $($Variables.CurrentVersionAutoUpdated)") {
-                        $LabelNotifications.ForeColor = "Green"
-                        Update-Notifications("Running $($Variables.CurrentProduct) Version $([Version]$Variables.CurrentVersion)")
-                        Update-Notifications("Auto Updated on $($Variables.CurrentVersionAutoUpdated)")
-                    }
-        
-                    #Display mining information
-                    if ($host.UI.RawUI.KeyAvailable) {
-                        $KeyPressed = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown,IncludeKeyUp"); sleep -Milliseconds 300; $host.UI.RawUI.FlushInputBuffer()
-                        If ($KeyPressed.KeyDown) {
-                            Switch ($KeyPressed.Character) {
-                                "s" {if ($Config.UIStyle -eq "Light") {$Config.UIStyle = "Full"}else {$Config.UIStyle = "Light"}}
-                                "e" {$Config.TrackEarnings = -not $Config.TrackEarnings}
-                            }
-                        }
-                    }
-                    Clear-Host
-                    [Array] $processesIdle = $Variables.ActiveMinerPrograms | Where { $_.Status -eq "Idle" }
-                    IF ($Config.UIStyle -eq "Full") {
-                        if ($processesIdle.Count -gt 0) {
-                            Write-Host "Idle: " $processesIdle.Count
-                            $processesIdle | Sort {if ($_.Process -eq $null) {(Get-Date)}else {$_.Process.ExitTime}} | Format-Table -Wrap (
-                                @{Label = "Speed"; Expression = {$_.HashRate | ForEach {"$($_ | ConvertTo-Hash)/s"}}; Align = 'right'}, 
-                                @{Label = "Exited"; Expression = {"{0:dd}:{0:hh}:{0:mm}" -f $(if ($_.Process -eq $null) {(0)}else {(Get-Date) - $_.Process.ExitTime}) }},
-                                @{Label = "Active"; Expression = {"{0:dd}:{0:hh}:{0:mm}" -f $(if ($_.Process -eq $null) {$_.Active}else {if ($_.Process.ExitTime -gt $_.Process.StartTime) {($_.Active + ($_.Process.ExitTime - $_.Process.StartTime))}else {($_.Active + ((Get-Date) - $_.Process.StartTime))}})}}, 
-                                @{Label = "Cnt"; Expression = {Switch ($_.Activated) {0 {"Never"} 1 {"Once"} Default {"$_"}}}}, 
-                                @{Label = "Command"; Expression = {"$($_.Path.TrimStart((Convert-Path ".\"))) $($_.Arguments)"}}
-                            ) | Out-Host
-                        }
-                    }
-                    Write-Host "      1BTC = $($Variables.Rates.($Config.Currency)) $($Config.Currency)"
-                    # Get and display earnings stats
-                    If ($Variables.Earnings -and $Config.TrackEarnings) {
-                        # $Variables.Earnings.Values | select Pool,Wallet,Balance,AvgDailyGrowth,EstimatedPayDate,TrustLevel | ft *
-                        $Variables.Earnings.Values | foreach {
-                            Write-Host "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" -F DarkGray
-                            Write-Host "Pool name           " -NoNewline; Write-Host $_.pool -F Yellow
-                            Write-Host "Wallet              " -NoNewline; Write-Host $_.Wallet -F Yellow
-                            Write-Host "Balance            " $_.balance ("{0:P0}" -f ($_.balance / $_.PaymentThreshold))
-                            Write-Host "Trust Level        " ("{0:P0}" -f $_.TrustLevel) -NoNewline; Write-Host -F darkgray " Avg based on [" ("{0:dd\ \d\a\y\s\ hh\:mm}" -f ($_.Date - $_.StartTime))"]"
-                            Write-Host "Average BTC/H" -NoNewline; Write-Host " BTC = " -F DarkGray -NoNewline; Write-Host ("{0:N8}" -f $_.AvgHourlyGrowth) "| mBTC =" ("{0:N3}" -f ($_.AvgHourlyGrowth * 1000))
-                            Write-Host "Average BTC/D" -NoNewline; Write-Host " BTC =" ("{0:N8}" -f ($_.BTCD)) "| mBTC =" ("{0:N3}" -f ($_.BTCD * 1000)) -F Yellow
-                            Write-Host "Estimated Pay Date " $_.EstimatedPayDate ">" $_.PaymentThreshold "BTC"
-                            # Write-Host "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" -F DarkGray
-                        }
-                    }
-                    Write-Host "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++" -F DarkGray
-                    if ($Variables.Miners | ? {$_.HashRates.PSObject.Properties.Value -eq $null}) {$Config.UIStyle = "Full"}
-                    IF ($Config.UIStyle -eq "Full") {
-
-                        $Variables.Miners | Sort -Descending Type, Profit | Format-Table -GroupBy Type (
-                            @{Label = "Miner"; Expression = {$_.Name}}, 
-                            @{Label = "Algorithm"; Expression = {$_.HashRates.PSObject.Properties.Name}}, 
-                            @{Label = "Speed"; Expression = {$_.HashRates.PSObject.Properties.Value | ForEach {if ($_ -ne $null) {"$($_ | ConvertTo-Hash)/s"}else {"Benchmarking"}}}; Align = 'right'}, 
-                            @{Label = "mBTC/Day"; Expression = {$_.Profits.PSObject.Properties.Value * 1000 | ForEach {if ($_ -ne $null) {$_.ToString("N3")}else {"Benchmarking"}}}; Align = 'right'}, 
-                            @{Label = "BTC/Day"; Expression = {$_.Profits.PSObject.Properties.Value | ForEach {if ($_ -ne $null) {$_.ToString("N5")}else {"Benchmarking"}}}; Align = 'right'}, 
-                            @{Label = "$($Config.Currency)/Day"; Expression = {$_.Profits.PSObject.Properties.Value | ForEach {if ($_ -ne $null) {($_ * $Variables.Rates.($Config.Currency)).ToString("N3")}else {"Benchmarking"}}}; Align = 'right'}, 
-                            @{Label = "BTC/GH/Day"; Expression = {$_.Pools.PSObject.Properties.Value.Price | ForEach {($_ * 1000000000).ToString("N5")}}; Align = 'right'},
-                            @{Label = "Pool"; Expression = {$_.Pools.PSObject.Properties.Value | ForEach {"$($_.Name)-$($_.Info)"}}}
-                        ) | Out-Host
-                        #Display active miners list
-                        [Array] $processRunning = $Variables.ActiveMinerPrograms | Where { $_.Status -eq "Running" }
-                        Write-Host "Running:"
-                        $processRunning | Sort {if ($_.Process -eq $null) {[DateTime]0}else {$_.Process.StartTime}} | Format-Table -Wrap (
-                            @{Label = "Speed"; Expression = {$_.HashRate | ForEach {"$($_ | ConvertTo-Hash)/s"}}; Align = 'right'}, 
-                            @{Label = "Started"; Expression = {"{0:dd}:{0:hh}:{0:mm}" -f $(if ($_.Process -eq $null) {(0)}else {(Get-Date) - $_.Process.StartTime}) }},
-                            @{Label = "Active"; Expression = {"{0:dd}:{0:hh}:{0:mm}" -f $(if ($_.Process -eq $null) {$_.Active}else {if ($_.Process.ExitTime -gt $_.Process.StartTime) {($_.Active + ($_.Process.ExitTime - $_.Process.StartTime))}else {($_.Active + ((Get-Date) - $_.Process.StartTime))}})}}, 
-                            @{Label = "Cnt"; Expression = {Switch ($_.Activated) {0 {"Never"} 1 {"Once"} Default {"$_"}}}}, 
-                            @{Label = "Command"; Expression = {"$($_.Path.TrimStart((Convert-Path ".\"))) $($_.Arguments)"}}
-                        ) | Out-Host
-                        [Array] $processesFailed = $Variables.ActiveMinerPrograms | Where { $_.Status -eq "Failed" }
-                        if ($processesFailed.Count -gt 0) {
-                            Write-Host -ForegroundColor Red "Failed: " $processesFailed.Count
-                            $processesFailed | Sort {if ($_.Process -eq $null) {[DateTime]0}else {$_.Process.StartTime}} | Format-Table -Wrap (
-                                @{Label = "Speed"; Expression = {$_.HashRate | ForEach {"$($_ | ConvertTo-Hash)/s"}}; Align = 'right'}, 
-                                @{Label = "Exited"; Expression = {"{0:dd}:{0:hh}:{0:mm}" -f $(if ($_.Process -eq $null) {(0)}else {(Get-Date) - $_.Process.ExitTime}) }},
-                                @{Label = "Active"; Expression = {"{0:dd}:{0:hh}:{0:mm}" -f $(if ($_.Process -eq $null) {$_.Active}else {if ($_.Process.ExitTime -gt $_.Process.StartTime) {($_.Active + ($_.Process.ExitTime - $_.Process.StartTime))}else {($_.Active + ((Get-Date) - $_.Process.StartTime))}})}}, 
-                                @{Label = "Cnt"; Expression = {Switch ($_.Activated) {0 {"Never"} 1 {"Once"} Default {"$_"}}}}, 
-                                @{Label = "Command"; Expression = {"$($_.Path.TrimStart((Convert-Path ".\"))) $($_.Arguments)"}}
-                            ) | Out-Host
-                        }
-                        Write-Host "--------------------------------------------------------------------------------"
-            
-                    }
-                    else {
-                        [Array] $processRunning = $Variables.ActiveMinerPrograms | Where { $_.Status -eq "Running" }
-                        Write-Host "Running:"
-                        $processRunning | Sort {if ($_.Process -eq $null) {[DateTime]0}else {$_.Process.StartTime}} | Format-Table -Wrap (
-                            @{Label = "Speed"; Expression = {$_.HashRate | ForEach {"$($_ | ConvertTo-Hash)/s"}}; Align = 'right'}, 
-                            @{Label = "Started"; Expression = {"{0:dd}:{0:hh}:{0:mm}" -f $(if ($_.Process -eq $null) {(0)}else {(Get-Date) - $_.Process.StartTime}) }},
-                            @{Label = "Active"; Expression = {"{0:dd}:{0:hh}:{0:mm}" -f $(if ($_.Process -eq $null) {$_.Active}else {if ($_.Process.ExitTime -gt $_.Process.StartTime) {($_.Active + ($_.Process.ExitTime - $_.Process.StartTime))}else {($_.Active + ((Get-Date) - $_.Process.StartTime))}})}}, 
-                            @{Label = "Cnt"; Expression = {Switch ($_.Activated) {0 {"Never"} 1 {"Once"} Default {"$_"}}}}, 
-                            @{Label = "Command"; Expression = {"$($_.Path.TrimStart((Convert-Path ".\"))) $($_.Arguments)"}}
-                        ) | Out-Host
-                        Write-Host "--------------------------------------------------------------------------------"
-                    }
-                    Write-Host -ForegroundColor Yellow "Last Refresh: $(Get-Date)"
-                    Update-Status($Variables.StatusText)
-                }
-                if (Test-Path ".\EndUIRefresh.ps1") {Invoke-Expression (Get-Content ".\EndUIRefresh.ps1" -Raw)}
-
-                $Variables.RefreshNeeded = $False
+            # Refresh selected tab
+            Switch ($TabControl.SelectedTab.Text) { 
+                "Earnings" { Get-Chart }
+                "Switching Log" { CheckBoxSwitching_Click }
             }
-            else {
-                Sleep -Milliseconds 1
+
+            If ($Variables.Balances) { 
+                $DisplayEarnings = [System.Collections.ArrayList]@(
+                    $Variables.Balances.Values | Select-Object @(
+                        @{ Name = "Pool"; Expression = { "$($_.Pool -replace 'Internal$', ' (Internal)' -replace 'External', ' (External)') [$($_.Currency)]" } }, 
+                        @{ Name = "Balance ($($Config.Currency))"; Expression = { "{0:N8}" -f ($_.Balance * $Variables.Rates.($_.Currency).($Config.Currency)) } }, 
+                        @{ Name = "Avg. $($Config.Currency)/day"; Expression = { "{0:N8}" -f ($_.AvgDailyGrowth * $Variables.Rates.($_.Currency).($Config.Currency)) } }, 
+                        @{ Name = "$($Config.Currency) in 1h"; Expression = { "{0:N6}" -f ($_.Growth1 * $Variables.Rates.($_.Currency).($Config.Currency)) } }, 
+                        @{ Name = "$($Config.Currency) in 6h"; Expression = { "{0:N6}" -f ($_.Growth6 * $Variables.Rates.($_.Currency).($Config.Currency)) } }, 
+                        @{ Name = "$($Config.Currency) in 24h"; Expression = { "{0:N6}" -f ($_.Growth24 * $Variables.Rates.($_.Currency).($Config.Currency)) } }, 
+                        @{ Name = "Est. Pay Date"; Expression = { If ($_.EstimatedPayDate -is [DateTime]) { $_.EstimatedPayDate.ToShortDateString() } Else { $_.EstimatedPayDate } } }, 
+                        @{ Name = "PayoutThreshold"; Expression = { "$($_.PayoutThreshold) $($_.PayoutThresholdCurrency) ($('{0:P1}' -f $($_.Balance / ($_.PayoutThreshold * $Variables.Rates.($_.PayoutThresholdCurrency).($_.Currency)))))" } }
+                    )
+                ) | Sort-Object Pool
+                $EarningsDGV.DataSource = [System.Collections.ArrayList]@($DisplayEarnings)
+                $EarningsDGV.ClearSelection()
             }
-            $TimerUI.Start()
-        })
+
+            If ($Variables.Miners) { 
+                $DisplayEstimations = [System.Collections.ArrayList]@(
+                    $Variables.Miners | Where-Object Available -EQ $true | Select-Object @(
+                        @{ Name = "Miner"; Expression = { $_.Name } }, 
+                        @{ Name = "Device(s)"; Expression = { $_.DeviceName -join '; ' } }, 
+                        @{ Name = "Algorithm(s)"; Expression = { $_.Algorithm -join ' & ' } }, 
+                        @{ Name = "PowerUsage"; Expression = { If ($_.MeasurePowerUsage) { "Measuring" } Else { "$($_.PowerUsage.ToString("N3")) W" } } }, 
+                        @{ Name = "Hashrate(s)"; Expression = { ($_.Workers.Speed | ForEach-Object { If (-not [Double]::IsNaN($_)) { "$($_ | ConvertTo-Hash)/s" -replace '\s+', ' ' } Else { "Benchmarking" } }) -join ' & ' } }, 
+                        @{ Name = "$($Config.Currency)/day"; Expression = { ($_.Workers | ForEach-Object { If (-not [Double]::IsNaN($_.Earning)) { ($_.Earning * $Variables.Rates.BTC.($Config.Currency)).ToString("N3") } Else { "Unknown" } }) -join ' + ' } }, 
+                        @{ Name = "Pool(s)"; Expression = { ($_.Workers.Pool | ForEach-Object { (@(@($_.Name | Select-Object) + @($_.Coin | Select-Object))) -join '-' }) -join ' & ' }
+                        }
+                    ) | Sort-Object "m$($Config.PayoutCurrency)/day" -Descending)
+                $EstimationsDGV.DataSource = [System.Collections.ArrayList]@($DisplayEstimations)
+            }
+            $EstimationsDGV.ClearSelection()
+
+            If ($Variables.Workers -and $Config.ShowWorkerStatus) { 
+                $DisplayWorkers = [System.Collections.ArrayList]@(
+                    $Variables.Workers | Select-Object @(
+                        @{ Name = "Worker"; Expression = { $_.worker } }, 
+                        @{ Name = "Status"; Expression = { $_.status } }, 
+                        @{ Name = "Last seen"; Expression = { "$($_.timesincelastreport -replace '^-')" } }, 
+                        @{ Name = "Version"; Expression = { $_.version } }, 
+                        @{ Name = "Est. Profit $($Config.Currency)/day"; Expression = { [decimal]($_.Profit * ($Variables.Rates.BTC.($Config.Currency))) } }, 
+                        @{ Name = "Miner"; Expression = { $_.data.Name -join '; ' } }, 
+                        @{ Name = "Pool(s)"; Expression = { ($_.data.Pool -replace 'Internal$', ' (Internal)' -replace 'External', ' (External)' | ForEach-Object { $_ -split ',' -join ' & ' }) -join '; ' } }, 
+                        @{ Name = "Algo(s)"; Expression = { ($_.data.Algorithm | ForEach-Object { $_ -split ',' -join ' & ' }) -join '; ' } }, 
+                        @{ Name = "Hashrate(s)"; Expression = { If ($_.data.CurrentSpeed) { ($_.data.CurrentSpeed | ForEach-Object { ($_ -split ',' | ForEach-Object { "$($_ | ConvertTo-Hash)/s" -replace "\s+", " " } ) -join ' & ' }) -join '; ' } Else { "" } } }, 
+                        @{ Name = "Benchmark Hashrate(s)"; Expression = { If ($_.data.EstimatedSpeed) { ($_.data.EstimatedSpeed | ForEach-Object { ($_ -split ',' | ForEach-Object { "$($_ | ConvertTo-Hash)/s" -replace "\s+", " " } ) -join ' & ' }) -join '; ' } Else { "" } }
+                        }
+                    ) | Sort-Object "Worker Name")
+                $WorkersDGV.DataSource = [System.Collections.ArrayList]@($DisplayWorkers)
+
+                # Set row color
+                $WorkersDGV.Rows | ForEach-Object { 
+                    If ($_.DataBoundItem.Status -eq "Offline") { 
+                        $_.DefaultCellStyle.Backcolor = [System.Drawing.Color]::FromArgb(255, 213, 142, 176)
+                    }
+                    ElseIf ($_.DataBoundItem.Status -eq "Paused") { 
+                        $_.DefaultCellStyle.Backcolor = [System.Drawing.Color]::FromArgb(255, 247, 252, 168)
+                    }
+                    ElseIf ($_.DataBoundItem.Status -eq "Running") { 
+                        $_.DefaultCellStyle.Backcolor = [System.Drawing.Color]::FromArgb(255, 127, 191, 144)
+                    }
+                    Else { 
+                        $_.DefaultCellStyle.Backcolor = [System.Drawing.Color]::FromArgb(255, 255, 255, 255)
+                    }
+                }
+
+                $WorkersDGV.ClearSelection()
+                $LabelMonitoringWorkers.Text = "Worker Status - Updated $($Variables.WorkersLastUpdated.ToString())"
+            }
+
+            If ($Variables.Miners) { 
+                $RunningMinersDGV.DataSource = [System.Collections.ArrayList]@($Variables.Miners | Where-Object { $_.Status -eq "Running" } | Select-Object  @{ Name = "Type"; Expression = { $_.Type -join " & " } }, @{ Name = "Miner"; Expression = { $_.Info } }, @{ Name = "Account(s)"; Expression = { ($_.Workers.Pool.User | Select-Object -Unique | ForEach-Object { $_ -split '\.' | Select-Object -Index 0 } | Select-Object -Unique) -join ' & ' } }, @{ Name = "Hashrate(s)"; Expression = { If ($_.Speed_Live -contains $null) { ($_.Speed_Live | ForEach-Object { "$($_ | ConvertTo-Hash)/s" -replace "\s+", " " }) -join ' & ' } Else { ($_.Workers.Speed | ForEach-Object { "$($_ | ConvertTo-Hash)/s" -replace "\s+", " " }) -join ' & ' } } }, @{ Name = "Active"; Expression = { "{0:%h}:{0:mm}:{0:ss}" -f ((Get-Date).ToUniversalTime() - $_.BeginTime) } }, @{ Name = "Total Active"; Expression = { "{0:%h}:{0:mm}:{0:ss}" -f $_.TotalMiningDuration } } | Sort-Object Type)
+                $RunningMinersDGV.ClearSelection()
+
+                If (-not ($Variables.Miners | Where-Object { $_.Status -eq "Running" })) { 
+                    Write-Message "No miners running. Waiting for next cycle."
+                }
+            }
+
+            $LabelEarningsDetails.Lines = @($Variables.Summary -replace '<br>|(&ensp;)+', '`n' -replace ' / ', '/' -split '`n')
+
+            Clear-Host
+
+            # Get and display earnings stats
+            If ($Variables.Balances -and $Variables.ShowPoolBalances) { 
+                $Variables.Balances.Values | ForEach-Object { 
+                    If ($_.Currency -eq "BTC" -and $Config.UsemBTC) { $Currency = "mBTC"; $mBTCfactor = 1000 } Else { $Currency = $_.Currency; $mBTCfactor = 1 }
+                    Write-Host "$($_.Pool -replace 'Internal$', ' (Internal Wallet)' -replace 'External$', ' (External Wallet)') [$($_.Wallet)]" -BackgroundColor Green -ForegroundColor Black
+                    Write-Host "Earned last hour:       $(($_.Growth1 * $mBTCfactor).ToString('N8')) $Currency / $(($_.Growth1 * $Variables.Rates.($_.Currency).($Config.Currency)).ToString('N8')) $($Config.Currency)"
+                    Write-Host "Earned last 24 hours:   $(($_.Growth24 * $mBTCfactor).ToString('N8')) $Currency / $(($_.Growth24 * $Variables.Rates.($_.Currency).($Config.Currency)).ToString('N8')) $($Config.Currency)"
+                    Write-Host "Earned last 7 days:     $(($_.Growth168 * $mBTCfactor).ToString('N8')) $Currency / $(($_.Growth168 * $Variables.Rates.($_.Currency).($Config.Currency)).ToString('N8')) $($Config.Currency)"
+                    Write-Host "≈ average / hour:       $(($_.AvgHourlyGrowth * $mBTCfactor).ToString('N8')) $Currency / $(($_.AvgHourlyGrowth * $Variables.Rates.($_.Currency).($Config.Currency)).ToString('N8')) $($Config.Currency)"
+                    Write-Host "≈ average / day:        $(($_.AvgDailyGrowth * $mBTCfactor).ToString('N8')) $Currency / $(($_.AvgDailyGrowth * $Variables.Rates.($_.Currency).($Config.Currency)).ToString('N8')) $($Config.Currency)"
+                    Write-Host "≈ average / week:       $(($_.AvgWeeklyGrowth * $mBTCfactor).ToString('N8')) $Currency / $(($_.AvgWeeklyGrowth * $Variables.Rates.($_.Currency).($Config.Currency)).ToString('N8')) $($Config.Currency)"
+                    Write-Host "Balance:                " -NoNewline; Write-Host "$(($_.Balance * $mBTCfactor).ToString('N8')) $Currency / $(($_.Balance * $Variables.Rates.($_.Currency).($Config.Currency)).ToString('N8')) $($Config.Currency)" -ForegroundColor Yellow
+                    Write-Host "                        $(($_.Balance / $_.PayoutThreshold * $mBTCFactor).ToString('P1')) of $(($_.PayoutThreshold).ToString()) $($_.PayoutThresholdCurrency) payment threshold"
+                    Write-Host "Estimated Payment Date: $(If ($_.EstimatedPayDate -is [DateTime]) { ($_.EstimatedPayDate).ToString("G")} Else { $_.EstimatedPayDate })`n"
+                }
+                Remove-Variable Currency -ErrorAction Ignore
+            }
+            If ($Variables.MinersMissingBinary) { 
+                Write-Host "`n"
+                Write-Host "Some miners binaries are missing, downloader is installing miner binaries..." -ForegroundColor Yellow
+            }
+
+            If ($Variables.Miners | Where-Object Available -EQ $true | Where-Object { $_.Benchmark -eq $true -or $_.MeasurePowerUsage -eq $true }) { 
+                If ($Config.UIStyle -ne "Full") { 
+                    $Variables.UIStyle = "Full"
+                    Write-Host "Benchmarking / Measuring power usage: Temporarily switched UI style to 'Full' (Information about miners run in the past, failed miners & watchdog timers will $(If ($Variables.UIStyle -eq "Light") { "not " })be shown)" -ForegroundColor Yellow
+                }
+            }
+
+            # Display available miners list
+            [System.Collections.ArrayList]$Miner_Table = @(
+                @{ Label = "Miner"; Expression = { $_.Name } }, 
+                @{ Label = "Algorithm(s)"; Expression = { $_.Workers.Pool.Algorithm } }
+            )
+            If ($Config.ShowMinerFee -and ($Variables.Miners.Workers.Fee )) { 
+                $Miner_Table.AddRange(
+                    @( <#Miner fees#>
+                        @{ Label = "Fee(s)"; Expression = { $_.Workers.Fee | ForEach-Object { "{0:P2}" -f [Double]$_ } } }
+                    )
+                )
+            }
+            $Miner_Table.AddRange(
+                @( <#Miner speed#>
+                    @{ Label = "Hashrate(s)"; Expression = { If (-not $_.Benchmark) { $_.Workers | ForEach-Object { "$($_.Speed | ConvertTo-Hash)/s" } } Else { If ($_.Status -eq "Running") { "Benchmarking..." } Else { "Benchmark pending" } } }; Align = 'right' }
+                )
+            )
+            If ($Config.ShowEarning) { 
+                $Miner_Table.AddRange(
+                    @( <#Miner Earning#>
+                        @{ Label = "Earning"; Expression = { If (-not [Double]::IsNaN($_.Earning)) { ConvertTo-LocalCurrency -Value ($_.Earning) -Rate $Variables.Rates.BTC.($Config.Currency) -Offset 1 } Else { "Unknown" } }; Align = "right" }
+                    )
+                )
+            }
+            If ($Config.ShowEarningBias) { 
+                $Miner_Table.AddRange(
+                    @( <#Miner EarningsBias#>
+                        @{ Label = "EarningBias"; Expression = { If (-not [Double]::IsNaN($_.Earning_Bias)) { ConvertTo-LocalCurrency -Value ($_.Earning_Bias) -Rate $Variables.Rates.BTC.($Config.Currency) -Offset 1 } Else { "Unknown" } }; Align = "right" }
+                    )
+                )
+            }
+            If ($Config.CalculatePowerCost -and $Config.ShowPowerUsage) { 
+                $Miner_Table.AddRange(
+                    @( <#Power Usage#>
+                        @{ Label = "PowerUsage"; Expression = { If (-not $_.MeasurePowerUsage) { "$($_.PowerUsage.ToString("N2")) W" } Else { If ($_.Status -eq "Running") { "Measuring..." } Else { "Unmeasured" } } }; Align = "right" }
+                    )
+                )
+            }
+            If ($Config.CalculatePowerCost -and $Config.ShowPowerCost -and $Variables.MiningPowerCost) { 
+                $Miner_Table.AddRange(
+                    @( <#PowerCost#>
+                        @{ Label = "PowerCost"; Expression = { If ($Variables.PowerPricekWh -eq 0) { (0).ToString("N$(Get-DigitsFromValue -Value $Variables.Rates.BTC.($Config.Currency) -Offset 1)") } Else { If (-not [Double]::IsNaN($_.PowerUsage)) { "-$(ConvertTo-LocalCurrency -Value ($_.PowerCost) -Rate ($Variables.Rates.($Config.PayoutCurrency).($Config.Currency)) -Offset 1)" } Else { "Unknown" } } }; Align = "right" }
+                    )
+                )
+            }
+            If ($Config.CalculatePowerCost -and $Config.ShowProfit -and $Variables.MiningPowerCost) { 
+                $Miner_Table.AddRange(
+                    @( <#Mining Profit#>
+                        @{ Label = "Profit"; Expression = { If (-not [Double]::IsNaN($_.Profit)) { ConvertTo-LocalCurrency -Value ($_.Profit) -Rate $Variables.Rates.BTC.($Config.Currency) -Offset 1 } Else { "Unknown" } }; Align = "right" }
+                    )
+                )
+            }
+            If ($Config.CalculatePowerCost -and $Config.ShowProfitBias -and $Variables.MiningPowerCost) { 
+                $Miner_Table.AddRange(
+                    @( <#Mining ProfitBias#>
+                        @{ Label = "ProfitBias"; Expression = { If (-not [Double]::IsNaN($_.Profit_Bias)) { ConvertTo-LocalCurrency -Value ($_.Profit_Bias) -Rate $Variables.Rates.BTC.($Config.Currency) -Offset 1 } Else { "Unknown" } }; Align = "right" }
+                    )
+                )
+            }
+            If ($Config.ShowAccuracy) { 
+                $Miner_Table.AddRange(
+                    @( <#Accuracy#>
+                        @{ Label = "Accuracy"; Expression = { $_.Workers.Pool.MarginOfError | ForEach-Object { "{0:P0}" -f [Double](1 - $_) } }; Align = 'right' }
+                    )
+                )
+            }
+            $Miner_Table.AddRange(
+                @( <#Pools#>
+                    @{ Label = "Pool(s)"; Expression = { $_.Workers.Pool.Name | ForEach-Object { $_ } } }
+                )
+            )
+            If ($Config.ShowPoolFee -and ($Variables.Miners.Workers.Pool.Fee )) { 
+                $Miner_Table.AddRange(
+                    @( <#Show pool fees#>
+                        @{ Label = "Fee(s)"; Expression = { $_.Workers.Pool.Fee | ForEach-Object { "{0:P2}" -f [Double]$_ } } }
+                    )
+                )
+            }
+            If ($Variables.Miners.Workers.Pool.Currency) { 
+                $Miner_Table.AddRange(
+                    @( <#Currency#>
+                        @{ Label = "Currency"; Expression = { $_.Workers.Pool.Currency | ForEach-Object { [String]$_ } } }
+                    )
+                )
+            }
+            If ($Variables.Miners.Workers.Pool.CoinName) { 
+                $Miner_Table.AddRange(
+                    @( <#CoinName#>
+                        @{ Label = "CoinName(s)"; Expression = { $_.Workers.Pool.CoinName | ForEach-Object { [String]$_ } } }
+                    )
+                )
+            }
+            If ($Variables.CalculatePowerCost) { $SortBy = "Profit" } Else { $SortBy = "Earning" }
+            $Variables.Miners | Where-Object Available -EQ $true | Group-Object -Property { $_.DeviceName } | Sort-Object Name | ForEach-Object { 
+                $MinersDeviceGroup = @($_.Group)
+                $MinersDeviceGroupNeedingBenchmark = @($MinersDeviceGroup | Where-Object Benchmark -EQ $true)
+                $MinersDeviceGroupNeedingPowerUsageMeasurement = @($MinersDeviceGroup | Where-Object Enabled -EQ $True | Where-Object MeasurePowerUsage -EQ $true)
+                $MinersDeviceGroup = @($MinersDeviceGroup | Where-Object { $Variables.ShowAllMiners -or $_.Fastest -eq $true -or $MinersDeviceGroupNeedingBenchmark.Count -gt 0 -or $MinersDeviceGroupNeedingPowerUsageMeasurement.Count -gt 0 } )
+                $MinersDeviceGroup | Where-Object { 
+                    $Variables.ShowAllMiners -or <#List all miners#>
+                    $_.$SortBy -ge ($MinersDeviceGroup.$SortBy | Sort-Object -Descending | Select-Object -Index (($MinersDeviceGroup.Count, 5 | Measure-Object -Minimum).Minimum - 1)) -or <#Always list at least the top 5 miners per device group#>
+                    $_.$SortBy -ge (($MinersDeviceGroup.$SortBy | Sort-Object -Descending | Select-Object -Index 0) * 0.5) -or <#Always list the better 50% miners per device group#>
+                    $MinersDeviceGroupNeedingBenchmark.Count -gt 0 -or <#List all miners when benchmarking#>
+                    $MinersDeviceGroupNeedingPowerUsageMeasurement.Count -gt 0 <#List all miners when measuring power usage#>
+                } | Sort-Object -Property DeviceName, @{ Expression = { $_.Benchmark -eq $true }; Descending = $true }, @{ Expression = { $_.MeasurePowerUsage -eq $true }; Descending = $true }, @{ Expression = { $_."$($SortBy)_Bias" }; Descending = $true }, @{ Expression = { $_.Name }; Descending = $false }, @{ Expression = { $_.Algorithm[0] }; Descending = $false }, @{ Expression = { $_.Algorithm[1] }; Descending = $false } | 
+                Format-Table $Miner_Table -GroupBy @{ Name = "Device$(If (@($_).Count -ne 1) { "s" })"; Expression = { "$($_.DeviceName -join ', ') [$(($Variables.Devices | Where-Object Name -In $_.DeviceName).Model -join ', ')]" } } | Out-Host
+
+                # Display benchmarking progress
+                If ($MinersDeviceGroupNeedingBenchmark) { 
+                    "Benchmarking for device$(If (($MinersDeviceGroup.DeviceName | Select-Object -Unique).Count -gt 1) { " group" } ) ($(($MinersDeviceGroup.DeviceName | Sort-Object -Unique ) -join '; ')) in progress: $($MinersDeviceGroupNeedingBenchmark.Count) miner$(If ($MinersDeviceGroupNeedingBenchmark.Count -gt 1){ 's' }) left to complete benchmark." | Out-Host
+                }
+                # Display power usage measurement progress
+                If ($MinersDeviceGroupNeedingPowerUsageMeasurement) { 
+                    "Power usage measurement for device$(If (($MinersDeviceGroup.DeviceName | Select-Object -Unique).Count -gt 1) { " group" } ) ($(($MinersDeviceGroup.DeviceName | Sort-Object -Unique ) -join '; ')) in progress: $($MinersDeviceGroupNeedingPowerUsageMeasurement.Count) miner$(If ($MinersDeviceGroupNeedingPowerUsageMeasurement.Count -gt 1) { 's' }) left to complete measuring." | Out-Host
+                }
+            }
+
+            If ($ProcessesRunning = @($Variables.Miners | Where-Object { $_.Status -eq "Running" })) { 
+                Write-Host "Running miner$(If ($ProcessesRunning.Count -eq 1) { ":" } Else { "s: $($ProcessesRunning.Count)" })"
+                $ProcessesRunning | Sort-Object { If ($null -eq $_.Process) { [DateTime]0 } Else { $_.Process.StartTime } } | Format-Table -Wrap (
+                    @{ Label = "Hashrate(s)"; Expression = { If ($_.Speed_Live) { (($_.Speed_Live | ForEach-Object { "$($_ | ConvertTo-Hash)/s" }) -join ' & ' ) -replace '\s+', ' ' } Else { "n/a" } }; Align = 'right' }, 
+                    @{ Label = "PowerUsage"; Expression = { If ($_.PowerUsage_Live) { "$($_.PowerUsage_Live.ToString("N2")) W" } Else { "n/a" } }; Align = 'right' }, 
+                    @{ Label = "Active (this run)"; Expression = { "{0:%h} hrs {0:mm} min {0:ss} sec" -f ((Get-Date).ToUniversalTime() - $_.BeginTime) } }, 
+                    @{ Label = "Active (total)"; Expression = { "{0:%h} hrs {0:mm} min {0:ss} sec" -f ($_.TotalMiningDuration) } }, 
+                    @{ Label = "Cnt"; Expression = { Switch ($_.Activated) { 0 { "Never" } 1 { "Once" } Default { "$_" } } } }, 
+                    @{ Label = "Command"; Expression = { "$($_.Path.TrimStart((Convert-Path ".\"))) $(Get-CommandLineParameters $_.Arguments)" } }
+                ) | Out-Host
+            }
+
+            If ($Variables.UIStyle -eq "Full") { 
+                If ($ProcessesIdle = @($Variables.Miners | Where-Object { $_.Activated -and $_.Status -eq "Idle" -and $_.GetActiveLast().ToLocalTime().AddHours(24) -gt (Get-Date) })) { 
+                    Write-Host "Previously executed miner$(If ($ProcessesIdle.Count -eq 1) { ":" } Else { "s: $($ProcessesIdle.Count)" })"
+                    $ProcessesIdle | Sort-Object { $_.Process.StartTime } -Descending | Select-Object -First ($MinersDeviceGroup.Count * 3) | Format-Table -Wrap (
+                        @{ Label = "Hashrate(s)"; Expression = { (($_.Workers.Speed | ForEach-Object { If (-not [Double]::IsNaN($_)) { "$($_ | ConvertTo-Hash)/s" } Else { "n/a" } }) -join ' & ' ) -replace '\s+', ' ' }; Align = 'right' }, 
+                        @{ Label = "PowerUsage"; Expression = { If (-not [Double]::IsNaN($_.PowerUsage)) { "$($_.PowerUsage.ToString("N2")) W" } Else { "n/a" } }; Align = 'right' }, 
+                        @{ Label = "Time since last run"; Expression = { "{0:%h} hrs {0:mm} min {0:ss} sec" -f $((Get-Date) - $_.GetActiveLast().ToLocalTime()) } }, 
+                        @{ Label = "Active (total)"; Expression = { "{0:%h} hrs {0:mm} min {0:ss} sec" -f $_.TotalMiningDuration } }, 
+                        @{ Label = "Cnt"; Expression = { Switch ($_.Activated) { 0 { "Never" } 1 { "Once" } Default { "$_" } } } }, 
+                        @{ Label = "Command"; Expression = { "$($_.Path.TrimStart((Convert-Path ".\"))) $(Get-CommandLineParameters $_.Arguments)" } }
+                    ) | Out-Host
+                }
+
+                If ($ProcessesFailed = @($Variables.Miners | Where-Object { $_.Activated -and $_.Status -eq "Failed" -and $_.GetActiveLast().ToLocalTime().AddHours(24) -gt (Get-Date)})) { 
+                    Write-Host -ForegroundColor Red "Failed miner$(If ($ProcessesFailed.Count -eq 1) { ":" } Else { "s: $($ProcessesFailed.Count)" })"
+                    $ProcessesFailed | Sort-Object { If ($null -eq $_.Process) { [DateTime]0 } Else { $_.Process.StartTime } } | Format-Table -Wrap (
+                        @{ Label = "Hashrate(s)"; Expression = { (($_.Workers.Speed | ForEach-Object { If (-not [Double]::IsNaN($_)) { "$($_ | ConvertTo-Hash)/s" } Else { "n/a" } }) -join ' & ' ) -replace '\s+', ' ' }; Align = 'right' }, 
+                        @{ Label = "PowerUsage"; Expression = { If (-not [Double]::IsNaN($_.PowerUsage)) { "$($_.PowerUsage.ToString("N2")) W" } Else { "n/a" } }; Align = 'right' }, 
+                        @{ Label = "Time since last fail"; Expression = { "{0:%h} hrs {0:mm} min {0:ss} sec" -f $((Get-Date) - $_.GetActiveLast().ToLocalTime()) } }, 
+                        @{ Label = "Active (total)"; Expression = { "{0:%h} hrs {0:mm} min {0:ss} sec" -f $_.TotalMiningDuration } }, 
+                        @{ Label = "Cnt"; Expression = { Switch ($_.Activated) { 0 { "Never" } 1 { "Once" } Default { "$_" } } } }, 
+                        @{ Label = "Command"; Expression = { "$($_.Path.TrimStart((Convert-Path ".\"))) $(Get-CommandLineParameters $_.Arguments)" } }
+                    ) | Out-Host
+                }
+            }
+
+            Remove-Variable SortBy
+            Remove-Variable MinersDeviceGroup -ErrorAction SilentlyContinue
+            Remove-Variable MinersDeviceGroupNeedingBenchmark -ErrorAction SilentlyContinue
+            Remove-Variable MinersDeviceGroupNeedingPowerUsageMeasurement -ErrorAction SilentlyContinue
+            Remove-Variable Miner_Table -ErrorAction SilentlyContinue
+
+            If ($Config.Watchdog -eq $true -and $Variables.UIStyle -eq "Full") { 
+                # Display watchdog timers
+                $Variables.WatchdogTimers | Where-Object Kicked -GT $Variables.Timer.AddSeconds( -$Variables.WatchdogReset) | Format-Table -Wrap (
+                    @{Label = "Miner Watchdog Timers"; Expression = { $_.MinerName } }, 
+                    @{Label = "Pool"; Expression = { $_.PoolName } }, 
+                    @{Label = "Algorithm"; Expression = { $_.Algorithm } }, 
+                    @{Label = "Device(s)"; Expression = { $_.DeviceName } }, 
+                    @{Label = "Last Updated"; Expression = { "{0:mm} min {0:ss} sec ago" -f ((Get-Date).ToUniversalTime() - $_.Kicked) }; Align = 'right' }
+                ) | Out-Host
+            }
+
+            $Variables.Summary -split '<br>' | ForEach-Object { Write-Host ($_ -replace '&ensp;', ' ' -replace '  +', '; ' -replace '; $') }
+
+            If (-not $Variables.Paused) { 
+                If ($Variables.Miners | Where-Object Available -EQ $true | Where-Object { $_.Benchmark -eq $false -or $_.MeasurePowerUsage -eq $false }) { 
+                    If ($Variables.MiningEarning -lt $Variables.MiningPowerCost) { 
+                        # Mining causes a loss
+                        Write-Host -ForegroundColor Red "Mining is currently NOT profitable and causes a loss of $($Config.Currency) $((($Variables.MiningProfit - $Variables.BasePowerCostBTC) * $Variables.Rates.BTC.($Config.Currency)).ToString("N$(Get-DigitsFromValue -Value $Variables.Rates.($Config.PayoutCurrency).($Config.Currency) -Offset 1)"))/day (including Base Power Cost)."
+                    }
+                    If (($Variables.MiningEarning - $Variables.MiningPowerCost) -lt $Config.ProfitabilityThreshold) { 
+                        # Mining profit is below the configured threshold
+                        Write-Host -ForegroundColor Blue "Mining profit ($($Config.Currency) $(ConvertTo-LocalCurrency -Value ($Variables.MiningProfit - $Variables.BasePowerCostBTC) -Rate ($Variables.Rates.BTC.($Config.Currency)) -Offset 1)) is below the configured threshold of $($Config.Currency) $($Config.ProfitabilityThreshold.ToString("N$((Get-Culture).NumberFormat.CurrencyDecimalDigits)"))/day; mining is suspended until threshold is reached."
+                    }
+                }
+            }
+
+            Write-Host "--------------------------------------------------------------------------------"
+            Write-Host -ForegroundColor Yellow "Last refresh: $(($Variables.Timer).ToLocalTime().ToString('G'))   |   Next refresh: $(($Variables.EndLoopTime).ToString('G'))"
+        }
+
+        $Variables.RefreshNeeded = $false
+
+    }
     $TimerUI.Start()
 }
 
-Function CheckedListBoxPools_Click ($Control) {
-    $Config | Add-Member -Force @{$Control.Tag = $Control.CheckedItems}
+Function Form_Load { 
+    $MainForm.Text = "$($Branding.ProductLabel) $($Variables.CurrentVersion)"
+    $LabelMiningStatus.Text = "$($Branding.ProductLabel) $($Variables.CurrentVersion)"
+    $MainForm.Number = 0
+    $TimerUI.Add_Tick(
+        { 
+            # Display mining information
+            If ($host.UI.RawUI.KeyAvailable) { 
+                $KeyPressed = $host.UI.RawUI.ReadKey("NoEcho, IncludeKeyDown, IncludeKeyUp"); Start-Sleep -Milliseconds 300; $host.UI.RawUI.FlushInputBuffer()
+                If ($KeyPressed.KeyDown) { 
+                    Switch ($KeyPressed.Character) { 
+                        "a" { 
+                            $Variables.ShowAllMiners = -not $Variables.ShowAllMiners
+                            Write-Host "Toggled displaying all available miners to " -NoNewline; If ($Variables.ShowAllMiners) { Write-Host "on" -ForegroundColor Green -NoNewline } Else { Write-Host "off" -ForegroundColor Red -NoNewline }; Write-Host "."
+                            $Variables.RefreshNeeded = $true
+                            Start-Sleep -Seconds 2
+                        }
+                        "b" { 
+                            $Variables.ShowPoolBalances = -not $Variables.ShowPoolBalances
+                            Write-Host "Toggled displaying pool balances to " -NoNewline; If ($Variables.ShowPoolBalances) { Write-Host "on" -ForegroundColor Green -NoNewline } Else { Write-Host "off" -ForegroundColor Red -NoNewline }; Write-Host "."
+                            $Variables.RefreshNeeded = $true
+                            Start-Sleep -Seconds 2
+                        }
+                        "s" { 
+                            If ($Variables.UIStyle -eq "Light") { $Variables.UIStyle = "Full" }
+                            Else { $Variables.UIStyle = "Light" }
+                            Write-Host "UI style set to " -NoNewline; Write-Host "$($Variables.UIStyle)" -ForegroundColor Blue -NoNewline; Write-Host " (Information about miners run in the past, failed miners & watchdog timers will " -NoNewline; If ($Variables.UIStyle -eq "Light") { Write-Host "not" -ForegroundColor Red -NoNewline; Write-Host " " -NoNewline }; Write-Host "be shown)."
+                            $Variables.RefreshNeeded = $true
+                            Start-Sleep -Seconds 2
+                        }
+                    }
+                }
+            }
+
+            $TimerUI.Interval = 50
+
+            # Timer never disposes objects until it is disposed
+            $MainForm.Number += 1
+            $TimerUI.Stop()
+
+            TimerUITick
+            If ($MainForm.Number -gt 6000) { 
+                $MainForm.Number = 0
+                $TimerUI.Remove_Tick( { TimerUITick })
+                $TimerUI.Dispose()
+                $TimerUI = New-Object System.Windows.Forms.Timer
+                $TimerUI.Add_Tick( { TimerUITick })
+            }
+            $TimerUI.Start()
+        }
+    )
+
+    $TimerUI.Interval = 50
+    $TimerUI.Stop()
+
+    If ($CheckBoxConsole.Checked) { 
+        $null = $ShowWindow::ShowWindowAsync($ConsoleHandle, 0)
+        Write-Message "Console window hidden"
+    }
+    Else { 
+        $null = $ShowWindow::ShowWindowAsync($ConsoleHandle, 8)
+    }
+    $TimerUI.Enabled = $true
 }
 
-Function PrepareWriteConfig {
-    If ($Config -eq $null) {$Config = [hashtable]::Synchronized(@{})
+Function CheckedListBoxPools_Click ($Control) { 
+    If ($Control.SelectedItem -in $Control.CheckedItems) { 
+        $Control.CheckedItems | Where-Object { $_ -ne $Control.SelectedItem -and ($_ -replace "24hr" -replace "Coins") -like "$($Control.SelectedItem -replace "24hr" -replace "Coins")" } | ForEach-Object { 
+            $Control.SetItemChecked($Control.Items.IndexOf($_), $false)
+        }
     }
-    $Config | Add-Member -Force @{$TBAddress.Tag = $TBAddress.Text}
-    $Config | Add-Member -Force @{$TBWorkerName.Tag = $TBWorkerName.Text}
-    $ConfigPageControls | ? {(($_.gettype()).Name -eq "CheckBox")} | foreach {$Config | Add-Member -Force @{$_.Tag = $_.Checked}}
-    $ConfigPageControls | ? {(($_.gettype()).Name -eq "TextBox")} | foreach {$Config | Add-Member -Force @{$_.Tag = $_.Text}}
-    $MonitoringSettingsControls | ? {(($_.gettype()).Name -eq "CheckBox")} | foreach {$Config | Add-Member -Force @{$_.Tag = $_.Checked}}
-    $MonitoringSettingsControls | ? {(($_.gettype()).Name -eq "TextBox")} | foreach {$Config | Add-Member -Force @{$_.Tag = $_.Text}}
-    $ConfigPageControls | ? {(($_.gettype()).Name -eq "TextBox") -and ($_.Tag -eq "GPUCount")} | foreach {
-        $Config | Add-Member -Force @{$_.Tag = [Int]$_.Text}
-        If ($CheckBoxDisableGPU0.checked -and [Int]$_.Text -gt 1) {$FirstGPU = 1}else {$FirstGPU = 0}
-        $Config | Add-Member -Force @{SelGPUCC = (($FirstGPU..($_.Text - 1)) -join ",")}
-        $Config | Add-Member -Force @{SelGPUDSTM = (($FirstGPU..($_.Text - 1)) -join " ")}
-    }
-    $ConfigPageControls | ? {(($_.gettype()).Name -eq "TextBox") -and ($_.Tag -eq "Algorithm")} | foreach {
-        $Config | Add-Member -Force @{$_.Tag = @($_.Text -split ",")}
-    }
-    $ConfigPageControls | ? {(($_.gettype()).Name -eq "TextBox") -and ($_.Tag -in @("Donate", "Interval", "ActiveMinerGainPct", "IdleSec"))} | foreach {
-        $Config | Add-Member -Force @{$_.Tag = [Int]$_.Text}
-    }
-    $Config | Add-Member -Force @{$CheckedListBoxPools.Tag = $CheckedListBoxPools.CheckedItems}
-    Write-Config -ConfigFile $ConfigFile -Config $Config
-    $MainForm.Refresh
-    # [windows.forms.messagebox]::show("Please restart NemosMiner",'Config saved','ok','Information') | out-null
 }
 
 Add-Type -AssemblyName System.Windows.Forms
 [System.Windows.Forms.Application]::EnableVisualStyles()
 
-# If (Test-Path ".\Logs\switching.log"){$log=Import-Csv ".\Logs\switching.log" | Select -Last 14}
-# $SwitchingArray = [System.Collections.ArrayList]@($Log)
-If (Test-Path ".\Logs\switching.log") {$SwitchingArray = [System.Collections.ArrayList]@(Import-Csv ".\Logs\switching.log" | Select -Last 14)}
-
-$MainForm = New-Object system.Windows.Forms.Form
-$NMIcon = New-Object system.drawing.icon (".\NM.ICO")
+$MainForm = New-Object System.Windows.Forms.Form
+$NMIcon = New-Object system.drawing.icon ("$($PWD)\Includes\NM.ICO")
 $MainForm.Icon = $NMIcon
-$MainForm.ClientSize = '740,450' # best to keep under 800,600
-$MainForm.text = "Form"
+$MainForm.ClientSize = [System.Drawing.Size]::new(740, 463) # best to keep under 800x600
+$MainForm.Text = "Form"
 $MainForm.TopMost = $false
 $MainForm.FormBorderStyle = 'Fixed3D'
 $MainForm.MaximizeBox = $false
+If ($Config.StartGUIMinimized) { $MainForm.WindowState = [System.Windows.Forms.FormWindowState]::Minimized }
 
-$MainForm.add_Shown( {
-        # Check if new version is available
-        Update-Status("Checking version")
-        try {
-            $Version = Invoke-WebRequest "https://nemosminer.com/data/version.json" -TimeoutSec 15 -UseBasicParsing -Headers @{"Cache-Control" = "no-cache"} | ConvertFrom-Json
-        }
-        catch {$Version = Get-content ".\Config\version.json" | Convertfrom-json}
-        If ($Version -ne $null) {$Version | ConvertTo-json | Out-File ".\Config\version.json"}
-        If ($Version.Product -eq $Variables.CurrentProduct -and [Version]$version.Version -gt $Variables.CurrentVersion -and $Version.Update) {
-            Update-Status("Version $($version.Version) available. (You are running $($Variables.CurrentVersion))")
-            If ([version](GetNVIDIADriverVersion) -ge [Version]$Version.MinNVIDIADriverVersion) {
-                $LabelNotifications.ForeColor = "Green"
-                $LabelNotifications.Lines += "Version $([Version]$version.Version) available"
-                $LabelNotifications.Lines += $version.Message
-                If ($Config.Autoupdate -and ! $Config.ManualConfig) {Autoupdate}
-            }
-            else {
-                Update-Status("Version $($version.Version) available. Please update NVIDIA driver. Will not AutoUpdate")
-                $LabelNotifications.ForeColor = "Red"
-                $LabelNotifications.Lines += "Driver update required. Version $([Version]$version.Version) available"
-            }
-        }
-    
+$MainForm.Add_Shown(
+    { 
         # TimerCheckVersion
         $TimerCheckVersion = New-Object System.Windows.Forms.Timer
         $TimerCheckVersion.Enabled = $true
-        $TimerCheckVersion.Interval = 1440 * 60 * 1000
-        $TimerCheckVersion.Add_Tick( {
-                Update-Status("Checking version")
-                try {
-                    $Version = Invoke-WebRequest "https://nemosminer.com/data/version.json" -TimeoutSec 15 -UseBasicParsing -Headers @{"Cache-Control" = "no-cache"} | ConvertFrom-Json
-                }
-                catch {$Version = Get-content ".\Config\version.json" | Convertfrom-json}
-                If ($Version -ne $null) {$Version | ConvertTo-json | Out-File ".\Config\version.json"}
-                If ($Version.Product -eq $Variables.CurrentProduct -and [Version]$version.Version -gt $Variables.CurrentVersion -and $Version.Update) {
-                    If ([version](GetNVIDIADriverVersion) -ge [Version]$Version.MinNVIDIADriverVersion) {
-                        $LabelNotifications.ForeColor = "Green"
-                        $LabelNotifications.Lines += "Version $([Version]$version.Version) available"
-                        $LabelNotifications.Lines += $version.Message
-                        If ($Config.Autoupdate -and ! $Config.ManualConfig) {Autoupdate}
-                    }
-                    else {
-                        Update-Status("Version $($version.Version) available. Please update NVIDIA driver. Will not AutoUpdate")
-                        $LabelNotifications.ForeColor = "Red"
-                        $LabelNotifications.Lines += "Driver update required. Version $([Version]$version.Version) available"
-                    }
-                    
-                }
-            })
-        # Detects GPU count if 0 or Null in config
-        If ($Config.GPUCount -eq $null -or $Config.GPUCount -lt 1) {
-            If ($Config -eq $null) {$Config = [hashtable]::Synchronized(@{})
+        $TimerCheckVersion.Interval = 1 <#timer resolution 1 ms#> * 1000 <#milliseconds#> * 60 <#seconds#> * 60 <#minutes#> * 24 <#hours#>
+        $TimerCheckVersion.Add_Tick(
+            { 
+                Get-NMVersion
             }
-            $Config | Add-Member -Force @{GPUCount = DetectGPUCount}
-            $TBGPUCount.Text = $Config.GPUCount
-            PrepareWriteConfig
-        }
-        # Start on load if Autostart
-        If ($Config.Autostart) {
-            If ($Config.StartPaused) {
-                $Variables.Paused = $True
-                $ButtonPause.Text = "Mine"
-            }
-            $ButtonStart.PerformClick()
-        }
-        If ($Config.StartGUIMinimized) {$MainForm.WindowState = [System.Windows.Forms.FormWindowState]::Minimized}
-        If ($Config.HideConsole) {$null = $ShowWindow::ShowWindowAsync($ConsoleHandle, 0)}
-    })
+        )
+    }
+)
 
-$MainForm.Add_FormClosing( {
+$MainForm.Add_FormClosing(
+    { 
         $TimerUI.Stop()
-        Update-Status("Stopping jobs and miner")
 
-        if ($Variables.EarningsTrackerJobs) {$Variables.EarningsTrackerJobs | % {$_ | Stop-Job | Remove-Job}}
-        if ($Variables.BrainJobs) {$Variables.BrainJobs | % {$_ | Stop-Job | Remove-Job}}
-
-        If ($Variables.ActiveMinerPrograms) {
-            $Variables.ActiveMinerPrograms | ForEach {
-                [Array]$filtered = ($BestMiners_Combo | Where Path -EQ $_.Path | Where Arguments -EQ $_.Arguments)
-                if ($filtered.Count -eq 0) {
-                    if ($_.Process -eq $null) {
-                        $_.Status = "Failed"
-                    }
-                    elseif ($_.Process.HasExited -eq $false) {
-                        $_.Active += (Get-Date) - $_.Process.StartTime
-                        $_.Process.CloseMainWindow() | Out-Null
-                        Sleep 1
-                        # simply "Kill with power"
-                        Stop-Process $_.Process -Force | Out-Null
-                        # Try to kill any process with the same path, in case it is still running but the process handle is incorrect
-                        $KillPath = $_.Path
-                        Get-Process | Where-Object {$_.Path -eq $KillPath} | Stop-Process -Force
-                        Write-Host -ForegroundColor Yellow "closing miner"
-                        Sleep 1
-                        $_.Status = "Idle"
-                    }
-                }
-            }
-        }
-
-        # $Result = $powershell.EndInvoke($Variables.CycleRunspaceHandle)
-        if ($CycleRunspace) {$CycleRunspace.Close()}
-        if ($powershell) {$powershell.Dispose()}
-        if ($IdleRunspace) {$IdleRunspace.Close()}
-        if ($idlePowershell) {$idlePowershell.Dispose()}
-    })
-
-$Config = Load-Config -ConfigFile $ConfigFile
-
-$Config | Add-Member -Force -MemberType ScriptProperty -Name "PoolsConfig" -Value {
-    If (Test-Path ".\Config\PoolsConfig.json") {
-        get-content ".\Config\PoolsConfig.json" | ConvertFrom-json
+        Stop-Mining
+        Stop-IdleMining
+        Stop-BrainJob
+        Stop-BalancesTracker
     }
-    else {
-        [PSCustomObject]@{default = [PSCustomObject]@{
-                Wallet             = "1QGADhdMRpp9Pk5u5zG1TrHKRrdK5R81TE"
-                UserName           = "nemo"
-                WorkerName         = "NemosMinerNoCfg"
-                PricePenaltyFactor = 1
-            }
-        }
-    }
-}
+)
 
-$MainForm | Add-Member -Name "Config" -Value $Config -MemberType NoteProperty -Force
-
-$SelGPUDSTM = $Config.SelGPUDSTM
-$SelGPUCC = $Config.SelGPUCC
 $MainForm | Add-Member -Name "Variables" -Value $Variables -MemberType NoteProperty -Force
 
-$Variables | Add-Member -Force @{CurrentProduct = (Get-Content .\Version.json | ConvertFrom-Json).Product}
-$Variables | Add-Member -Force @{CurrentVersion = [Version](Get-Content .\Version.json | ConvertFrom-Json).Version}
-$Variables | Add-Member -Force @{CurrentVersionAutoUpdated = (Get-Content .\Version.json | ConvertFrom-Json).AutoUpdated.Value}
 $Variables.StatusText = "Idle"
-$TabControl = New-object System.Windows.Forms.TabControl
 $RunPage = New-Object System.Windows.Forms.TabPage
 $RunPage.Text = "Run"
+$Global:EarningsPage = New-Object System.Windows.Forms.TabPage
+$Global:EarningsPage.Text = "Earnings"
 $SwitchingPage = New-Object System.Windows.Forms.TabPage
-$SwitchingPage.Text = "Switching"
-$ConfigPage = New-Object System.Windows.Forms.TabPage
-$ConfigPage.Text = "Config"
+$SwitchingPage.Text = "Switching Log"
 $MonitoringPage = New-Object System.Windows.Forms.TabPage
-$MonitoringPage.Text = "Monitoring"
+$MonitoringPage.Text = "Rig Monitoring"
 $EstimationsPage = New-Object System.Windows.Forms.TabPage
 $EstimationsPage.Text = "Benchmarks"
 
-$tabControl.DataBindings.DefaultDataSourceUpdateMode = 0
-$tabControl.Location = New-Object System.Drawing.Point(10, 91)
-$tabControl.Name = "tabControl"
-$tabControl.width = 720
-$tabControl.height = 359
-$MainForm.Controls.Add($tabControl)
-$TabControl.Controls.AddRange(@($RunPage, $SwitchingPage, $ConfigPage, $MonitoringPage, $EstimationsPage))
+$TabControl = New-Object System.Windows.Forms.TabControl
+$TabControl.DataBindings.DefaultDataSourceUpdateMode = 0
+$TabControl.Location = [System.Drawing.Point]::new(10, 91)
+$TabControl.Name = "TabControl"
+$TabControl.Width = 722
+$TabControl.Height = 363
+$TabControl.Controls.AddRange(@($RunPage, $Global:EarningsPage, $SwitchingPage, $MonitoringPage, $EstimationsPage))
+
+$TabControl_SelectedIndexChanged = {
+    Switch ($TabControl.SelectedTab.Text) { 
+        "Earnings" { Get-Chart }
+        "Switching Log" { CheckBoxSwitching_Click }
+    }
+}
+$TabControl.Add_SelectedIndexChanged($TabControl_SelectedIndexChanged)
+
+$MainForm.Controls.Add($TabControl)
+
 # Form Controls
 $MainFormControls = @()
 
-$LabelEarningsDetails = New-Object system.Windows.Forms.TextBox
+$PictureBoxLogo = New-Object Windows.Forms.PictureBox
+$PictureBoxLogo.Width = 47 #$img.Size.Width
+$PictureBoxLogo.Height = 47 #$img.Size.Height
+$PictureBoxLogo.SizeMode = 1
+$PictureBoxLogo.ImageLocation = $Branding.LogoPath
+$MainFormControls += $PictureBoxLogo
+
+$LabelEarningsDetails = New-Object System.Windows.Forms.TextBox
 $LabelEarningsDetails.Tag = ""
 $LabelEarningsDetails.MultiLine = $true
-$LabelEarningsDetails.text = ""
+$LabelEarningsDetails.Text = ""
 $LabelEarningsDetails.AutoSize = $false
-$LabelEarningsDetails.width = 200 #382
-$LabelEarningsDetails.height = 47 #62
-$LabelEarningsDetails.location = New-Object System.Drawing.Point(10, 2)
-$LabelEarningsDetails.Font = 'lucida console,10'
+$LabelEarningsDetails.Width = 382
+$LabelEarningsDetails.Height = 77 # 62
+$LabelEarningsDetails.Location = [System.Drawing.Point]::new(57, 2)
+$LabelEarningsDetails.Font = [System.Drawing.Font]::new("Lucida Console", 10)
 $LabelEarningsDetails.BorderStyle = 'None'
 $LabelEarningsDetails.BackColor = [System.Drawing.SystemColors]::Control
-$LabelEarningsDetails.ForeColor = "Green"
-$LabelEarningsDetails.Visible = $True
-# $TBNotifications.TextAlign                = "Right"
+$LabelEarningsDetails.ForeColor = [System.Drawing.Color]::Green
+$LabelEarningsDetails.Visible = $true
 $MainFormControls += $LabelEarningsDetails
 
-$LabelBTCD = New-Object system.Windows.Forms.Label
-$LabelBTCD.text = "BTC/D"
-$LabelBTCD.AutoSize = $False
-$LabelBTCD.width = 390
-$LabelBTCD.height = 35
-$LabelBTCD.location = New-Object System.Drawing.Point(330, 2)
-$LabelBTCD.Font = 'Microsoft Sans Serif,14'
-$LabelBTCD.TextAlign = "MiddleRight"
-$LabelBTCD.ForeColor = "Green"
-$LabelBTCD.Backcolor = "Transparent"
-# $LabelBTCD.BorderStyle              = 'FixedSingle'
-$MainFormControls += $LabelBTCD
+$LabelMiningStatus = New-Object System.Windows.Forms.Label
+$LabelMiningStatus.Text = "$($Config.PayoutCurrency)/day"
+$LabelMiningStatus.AutoSize = $false
+$LabelMiningStatus.Width = 473
+$LabelMiningStatus.Height = 35
+$LabelMiningStatus.Location = [System.Drawing.Point]::new(247, 2)
+$LabelMiningStatus.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 14)
+$LabelMiningStatus.TextAlign = "MiddleRight"
+$LabelMiningStatus.ForeColor = [System.Drawing.Color]::Green
+$LabelMiningStatus.BackColor = [System.Drawing.Color]::Transparent
+$MainFormControls += $LabelMiningStatus
 
-$LabelBTCPrice = New-Object system.Windows.Forms.Label
-$LabelBTCPrice.text = If ($Variables.Rates.$Currency -gt 0) {"BTC/$($Config.Currency) $($Variables.Rates.$Currency)"}
-$LabelBTCPrice.AutoSize = $false
-$LabelBTCPrice.width = 400
-$LabelBTCPrice.height = 20
-$LabelBTCPrice.location = New-Object System.Drawing.Point(630, 39)
-$LabelBTCPrice.Font = 'Microsoft Sans Serif,8'
-# $LabelBTCPrice.ForeColor              = "Gray"
-$MainFormControls += $LabelBTCPrice
-
-$ButtonPause = New-Object system.Windows.Forms.Button
-$ButtonPause.text = "Pause"
-$ButtonPause.width = 60
-$ButtonPause.height = 30
-$ButtonPause.location = New-Object System.Drawing.Point(610, 62)
-$ButtonPause.Font = 'Microsoft Sans Serif,10'
-$ButtonPause.Visible = $False
-$MainFormControls += $ButtonPause
-
-$ButtonStart = New-Object system.Windows.Forms.Button
-$ButtonStart.text = "Start"
-$ButtonStart.width = 60
-$ButtonStart.height = 30
-$ButtonStart.location = New-Object System.Drawing.Point(670, 62)
-$ButtonStart.Font = 'Microsoft Sans Serif,10'
+$ButtonStart = New-Object System.Windows.Forms.Button
+$ButtonStart.Text = "Start"
+$ButtonStart.Width = 60
+$ButtonStart.Height = 30
+$ButtonStart.Location = [System.Drawing.Point]::new(550, 62)
+$ButtonStart.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
+$ButtonStart.Visible = $true
+$ButtonStart.Enabled = (-not $Config.Autostart)
 $MainFormControls += $ButtonStart
 
-$LabelNotifications = New-Object system.Windows.Forms.TextBox
+$ButtonPause = New-Object System.Windows.Forms.Button
+$ButtonPause.Text = "Pause"
+$ButtonPause.Width = 60
+$ButtonPause.Height = 30
+$ButtonPause.Location = [System.Drawing.Point]::new(610, 62)
+$ButtonPause.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
+$ButtonPause.Visible = $true
+$ButtonPause.Enabled = $Config.Autostart
+$MainFormControls += $ButtonPause
+
+$ButtonStop = New-Object System.Windows.Forms.Button
+$ButtonStop.Text = "Stop"
+$ButtonStop.Width = 60
+$ButtonStop.Height = 30
+$ButtonStop.Location = [System.Drawing.Point]::new(670, 62)
+$ButtonStop.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
+$ButtonStop.Visible = $true
+$ButtonStop.Enabled = $Config.Autostart
+$MainFormControls += $ButtonStop
+
+$LabelNotifications = New-Object System.Windows.Forms.TextBox
 $LabelNotifications.Tag = ""
 $LabelNotifications.MultiLine = $true
-# $TBNotifications.Scrollbars                = "Vertical" 
-$LabelNotifications.text = ""
+$LabelNotifications.Text = ""
 $LabelNotifications.AutoSize = $false
-$LabelNotifications.width = 280
-$LabelNotifications.height = 18
-$LabelNotifications.location = New-Object System.Drawing.Point(345, 49)
-$LabelNotifications.Font = 'Microsoft Sans Serif,10'
+$LabelNotifications.Width = 280
+$LabelNotifications.Height = 18
+$LabelNotifications.Location = [System.Drawing.Point]::new(10, 49)
+$LabelNotifications.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
 $LabelNotifications.BorderStyle = 'None'
 $LabelNotifications.BackColor = [System.Drawing.SystemColors]::Control
-$LabelNotifications.Visible = $True
-# $TBNotifications.TextAlign                 = "Right"
+$LabelNotifications.Visible = $true
 $MainFormControls += $LabelNotifications
-
-$LabelGitHub = New-Object System.Windows.Forms.LinkLabel
-# $LabelGitHub.Location           = New-Object System.Drawing.Size(415,39)
-# $LabelGitHub.Size               = New-Object System.Drawing.Size(160,18)
-$LabelGitHub.Location = New-Object System.Drawing.Size(10, 49)
-$LabelGitHub.Size = New-Object System.Drawing.Size(200, 18)
-$LabelGitHub.LinkColor = "BLUE"
-$LabelGitHub.ActiveLinkColor = "RED"
-$LabelGitHub.Text = "NemosMiner on GitHub"
-$LabelGitHub.add_Click( {[system.Diagnostics.Process]::start("https://github.com/nemosminer/NemosMiner/releases")})
-$MainFormControls += $LabelGitHub
-
-$LabelCopyright = New-Object System.Windows.Forms.LinkLabel
-$LabelCopyright.Location = New-Object System.Drawing.Size(400, 72)
-$LabelCopyright.Size = New-Object System.Drawing.Size(220, 18)
-$LabelCopyright.LinkColor = "BLUE"
-$LabelCopyright.ActiveLinkColor = "RED"
-$LabelCopyright.Text = "Copyright (c) 2018-2019 Nemo and MrPlus"
-$LabelCopyright.add_Click( {[system.Diagnostics.Process]::start("https://github.com/nemosminer/NemosMiner/blob/master/LICENSE")})
-$MainFormControls += $LabelCopyright
-
-$LabelAddress = New-Object system.Windows.Forms.Label
-$LabelAddress.text = "Wallet Address"
-$LabelAddress.AutoSize = $false
-$LabelAddress.width = 100
-$LabelAddress.height = 20
-$LabelAddress.location = New-Object System.Drawing.Point(10, 68)
-$LabelAddress.Font = 'Microsoft Sans Serif,10'
-$MainFormControls += $LabelAddress
-
-$TBAddress = New-Object system.Windows.Forms.TextBox
-$TBAddress.Tag = "Wallet"
-$TBAddress.MultiLine = $False
-# $TBAddress.Scrollbars             = "Vertical" 
-$TBAddress.text = $Config.Wallet
-$TBAddress.AutoSize = $false
-$TBAddress.width = 280
-$TBAddress.height = 20
-$TBAddress.location = New-Object System.Drawing.Point(112, 68)
-$TBAddress.Font = 'Microsoft Sans Serif,10'
-# $TBAddress.TextAlign                = "Right"
-$MainFormControls += $TBAddress
 
 # Run Page Controls
 $RunPageControls = @()
 
-$LabelStatus = New-Object system.Windows.Forms.TextBox
-$LabelStatus.MultiLine = $true
-$LabelStatus.Scrollbars = "Vertical" 
-$LabelStatus.text = ""
-$LabelStatus.AutoSize = $true
-$LabelStatus.width = 712
-$LabelStatus.height = 50
-$LabelStatus.location = New-Object System.Drawing.Point(2, 2)
-$LabelStatus.Font = 'Microsoft Sans Serif,10'
-$RunPageControls += $LabelStatus
- 
-$LabelEarnings = New-Object system.Windows.Forms.Label
-$LabelEarnings.text = "Earnings Tracker"
-$LabelEarnings.AutoSize = $false
-$LabelEarnings.width = 300
-$LabelEarnings.height = 20
-$LabelEarnings.location = New-Object System.Drawing.Point(2, 54)
-$LabelEarnings.Font = 'Microsoft Sans Serif,10'
-$RunPageControls += $LabelEarnings
+$Variables.LabelStatus = New-Object System.Windows.Forms.TextBox
+$Variables.LabelStatus.MultiLine = $true
+$Variables.LabelStatus.Scrollbars = "Vertical" 
+$Variables.LabelStatus.Text = ""
+$Variables.LabelStatus.AutoSize = $true
+$Variables.LabelStatus.Width = 708
+$Variables.LabelStatus.Height = 202
+$Variables.LabelStatus.Location = [System.Drawing.Point]::new(2, 2)
+$Variables.LabelStatus.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
 
-$EarningsDGV = New-Object system.Windows.Forms.DataGridView
-$EarningsDGV.width = 712
-# $EarningsDGV.height                                     = 305
-$EarningsDGV.height = 170
-$EarningsDGV.location = New-Object System.Drawing.Point(2, 74)
-$EarningsDGV.DataBindings.DefaultDataSourceUpdateMode = 0
-$EarningsDGV.AutoSizeColumnsMode = "Fill"
-$EarningsDGV.RowHeadersVisible = $False
-$RunPageControls += $EarningsDGV
+$RunPageControls += $Variables.LabelStatus
 
-$LabelRunningMiners = New-Object system.Windows.Forms.Label
-$LabelRunningMiners.text = "Running Miners"
+$LabelCopyright = New-Object System.Windows.Forms.LinkLabel
+$LabelCopyright.Location = New-Object System.Drawing.Size(220, 214)
+$LabelCopyright.Size = New-Object System.Drawing.Size(490, 16)
+$LabelCopyright.LinkColor = [System.Drawing.Color]::Blue
+$LabelCopyright.ActiveLinkColor = [System.Drawing.Color]::Blue
+$LabelCopyright.TextAlign = "MiddleRight"
+$LabelCopyright.Text = "Copyright (c) 2018-$((Get-Date).Year) Nemo, MrPlus && UselessGuru"
+$LabelCopyright.Add_Click( { Start-Process "https://github.com/Minerx117/NemosMiner/blob/master/LICENSE" })
+$RunPageControls += $LabelCopyright
+
+$LabelRunningMiners = New-Object System.Windows.Forms.Label
+$LabelRunningMiners.Text = "Running Miners"
 $LabelRunningMiners.AutoSize = $false
-$LabelRunningMiners.width = 300
-$LabelRunningMiners.height = 20
-$LabelRunningMiners.location = New-Object System.Drawing.Point(2, 246)
-$LabelRunningMiners.Font = 'Microsoft Sans Serif,10'
+$LabelRunningMiners.Width = 202
+$LabelRunningMiners.Height = 16
+$LabelRunningMiners.Location = [System.Drawing.Point]::new(2, 213)
+$LabelRunningMiners.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
 $RunPageControls += $LabelRunningMiners
 
-$RunningMinersDGV = New-Object system.Windows.Forms.DataGridView
-$RunningMinersDGV.width = 712
-# $EarningsDGV.height                                     = 305
-$RunningMinersDGV.height = 95
-$RunningMinersDGV.location = New-Object System.Drawing.Point(2, 266)
+$RunningMinersDGV = New-Object System.Windows.Forms.DataGridView
+$RunningMinersDGV.Width = 708
+$RunningMinersDGV.Height = 100
+$RunningMinersDGV.Location = [System.Drawing.Point]::new(2, 232)
 $RunningMinersDGV.DataBindings.DefaultDataSourceUpdateMode = 0
-$RunningMinersDGV.AutoSizeColumnsMode = "Fill"
-$RunningMinersDGV.RowHeadersVisible = $False
+$RunningMinersDGV.RowHeadersVisible = $false
+$RunningMinersDGV.AllowUserToOrderColumns = $true
+$RunningMinersDGV.AllowUserToResizeColumns = $true
+$RunningMinersDGV.AllowUserToResizeRows = $false
+$RunningMinersDGV.ReadOnly = $true
 $RunPageControls += $RunningMinersDGV
+
+# Earnings Page Controls
+$EarningsPageControls = @()
+
+$LabelEarnings = New-Object System.Windows.Forms.Label
+$LabelEarnings.Text = "Earnings statistics per pool"
+$LabelEarnings.AutoSize = $false
+$LabelEarnings.Width = 202
+$LabelEarnings.Height = 16
+$LabelEarnings.Location = [System.Drawing.Point]::new(2, 149)
+$LabelEarnings.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
+$EarningsPageControls += $LabelEarnings
+
+$EarningsDGV = New-Object System.Windows.Forms.DataGridView
+$EarningsDGV.Width = 708
+$EarningsDGV.Height = 165
+$EarningsDGV.Location = [System.Drawing.Point]::new(2, 167)
+$EarningsDGV.DataBindings.DefaultDataSourceUpdateMode = 0
+$EarningsDGV.RowHeadersVisible = $false
+$EarningsDGV.AllowUserToOrderColumns = $true
+$EarningsDGV.AllowUserToResizeColumns = $true
+$EarningsDGV.AllowUserToResizeRows = $false
+$EarningsDGV.ReadOnly = $true
+$EarningsPageControls += $EarningsDGV
 
 # Switching Page Controls
 $SwitchingPageControls = @()
-    
-$CheckShowSwitchingCPU = New-Object system.Windows.Forms.CheckBox
-$CheckShowSwitchingCPU.Tag = "CPU"
-$CheckShowSwitchingCPU.text = "CPU"
-$CheckShowSwitchingCPU.AutoSize = $false
-$CheckShowSwitchingCPU.width = 60
-$CheckShowSwitchingCPU.height = 20
-$CheckShowSwitchingCPU.location = New-Object System.Drawing.Point(2, 2)
-$CheckShowSwitchingCPU.Font = 'Microsoft Sans Serif,10'
-$CheckShowSwitchingCPU.Checked = ("CPU" -in $Config.Type)
-$SwitchingPageControls += $CheckShowSwitchingCPU
-    
-$CheckShowSwitchingCPU | foreach {$_.Add_Click( {CheckBoxSwitching_Click($This)})}
 
-$CheckShowSwitchingNVIDIA = New-Object system.Windows.Forms.CheckBox
+$CheckShowSwitchingCPU = New-Object System.Windows.Forms.CheckBox
+$CheckShowSwitchingCPU.Tag = "CPU"
+$CheckShowSwitchingCPU.Text = "CPU"
+$CheckShowSwitchingCPU.AutoSize = $false
+$CheckShowSwitchingCPU.Width = 60
+$CheckShowSwitchingCPU.Height = 20
+$CheckShowSwitchingCPU.Location = [System.Drawing.Point]::new(2, 2)
+$CheckShowSwitchingCPU.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
+$SwitchingPageControls += $CheckShowSwitchingCPU
+$CheckShowSwitchingCPU | ForEach-Object { $_.Add_Click( { CheckBoxSwitching_Click($this) }) }
+
+$CheckShowSwitchingNVIDIA = New-Object System.Windows.Forms.CheckBox
 $CheckShowSwitchingNVIDIA.Tag = "NVIDIA"
-$CheckShowSwitchingNVIDIA.text = "NVIDIA"
+$CheckShowSwitchingNVIDIA.Text = "NVIDIA"
 $CheckShowSwitchingNVIDIA.AutoSize = $false
-$CheckShowSwitchingNVIDIA.width = 100
-$CheckShowSwitchingNVIDIA.height = 20
-$CheckShowSwitchingNVIDIA.location = New-Object System.Drawing.Point(62, 2)
-$CheckShowSwitchingNVIDIA.Font = 'Microsoft Sans Serif,10'
-$CheckShowSwitchingNVIDIA.Checked = ("NVIDIA" -in $Config.Type)
+$CheckShowSwitchingNVIDIA.Width = 70
+$CheckShowSwitchingNVIDIA.Height = 20
+$CheckShowSwitchingNVIDIA.Location = [System.Drawing.Point]::new(62, 2)
+$CheckShowSwitchingNVIDIA.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
 $SwitchingPageControls += $CheckShowSwitchingNVIDIA
-    
-$CheckShowSwitchingNVIDIA | foreach {$_.Add_Click( {CheckBoxSwitching_Click($This)})}
-    
-Function CheckBoxSwitching_Click {
+$CheckShowSwitchingNVIDIA | ForEach-Object { $_.Add_Click( { CheckBoxSwitching_Click($this) }) }
+
+$CheckShowSwitchingAMD = New-Object System.Windows.Forms.CheckBox
+$CheckShowSwitchingAMD.Tag = "AMD"
+$CheckShowSwitchingAMD.Text = "AMD"
+$CheckShowSwitchingAMD.AutoSize = $false
+$CheckShowSwitchingAMD.Width = 100
+$CheckShowSwitchingAMD.Height = 20
+$CheckShowSwitchingAMD.Location = [System.Drawing.Point]::new(137, 2)
+$CheckShowSwitchingAMD.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
+$SwitchingPageControls += $CheckShowSwitchingAMD
+$CheckShowSwitchingAMD | ForEach-Object { $_.Add_Click( { CheckBoxSwitching_Click($this) }) }
+
+Function CheckBoxSwitching_Click { 
+    If (-not $SwitchingDGV.DataSource) { 
+        $CheckShowSwitchingAMD.Checked = ($Variables.Devices | Where-Object { $_.State -eq [DeviceState]::Enabled } | Where-Object Type -EQ "GPU" | Where-Object Vendor -EQ "AMD")
+        $CheckShowSwitchingCPU.Checked = ($Variables.Devices | Where-Object { $_.State -eq [DeviceState]::Enabled } | Where-Object Name -Like "CPU#*")
+        $CheckShowSwitchingNVIDIA.Checked = ($Variables.Devices | Where-Object { $_.State -eq [DeviceState]::Enabled } | Where-Object Type -EQ "GPU" | Where-Object Vendor -EQ "NVIDIA")
+    }
     $SwitchingDisplayTypes = @()
-    $SwitchingPageControls | foreach {if ($_.Checked) {$SwitchingDisplayTypes += $_.Tag}}
-    # If (Test-Path ".\Logs\switching.log"){$log=Import-Csv ".\Logs\switching.log" | ? {$_.Type -in $SwitchingDisplayTypes} | Select -Last 13}
-    # $SwitchingArray = [System.Collections.ArrayList]@($Log)
-    # If (Test-Path ".\Logs\switching.log"){$SwitchingArray = [System.Collections.ArrayList]@(Import-Csv ".\Logs\switching.log" | ? {$_.Type -in $SwitchingDisplayTypes} | Select -Last 13)}
-    If (Test-Path ".\Logs\switching.log") {$SwitchingArray = [System.Collections.ArrayList]@(@((get-content ".\Logs\switching.log" -First 1) , (get-content ".\logs\switching.log" -last 50)) | ConvertFrom-Csv | ? {$_.Type -in $SwitchingDisplayTypes} | Select -Last 13)}
-    $SwitchingDGV.DataSource = $SwitchingArray
+    $SwitchingPageControls | ForEach-Object { If ($_.Checked) { $SwitchingDisplayTypes += $_.Tag } }
+    If (Test-Path -Path ".\Logs\SwitchingLog.csv" -PathType Leaf) { 
+        $Variables.SwitchingLog = @(Get-Content ".\Logs\SwitchingLog.csv" | ConvertFrom-Csv | Select-Object -Last 1000 | Select-Object @("DateTime", "Action", "Name", "Type", "Account", "Pool", "Algorithm", "Duration")); [Array]::Reverse($Variables.SwitchingLog)
+        $SwitchingDGV.DataSource = [System.Collections.ArrayList]($Variables.SwitchingLog | Where-Object { $_.Type -in $SwitchingDisplayTypes } | ForEach-Object { $_.Datetime = (Get-Date $_.DateTime).ToString("G"); $_ })
+        $SwitchingDGV.Columns[0].HeaderText = "Date & Time";
+    }
 }
 
-
-$SwitchingDGV = New-Object system.Windows.Forms.DataGridView
-$SwitchingDGV.width = 712
-$SwitchingDGV.height = 333
-$SwitchingDGV.location = New-Object System.Drawing.Point(2, 22)
+$SwitchingDGV = New-Object System.Windows.Forms.DataGridView
+$SwitchingDGV.Width = 708
+$SwitchingDGV.Height = 310
+$SwitchingDGV.Location = [System.Drawing.Point]::new(2, 22)
 $SwitchingDGV.DataBindings.DefaultDataSourceUpdateMode = 0
-$SwitchingDGV.AutoSizeColumnsMode = "Fill"
-$SwitchingDGV.RowHeadersVisible = $False
-$SwitchingDGV.DataSource = $SwitchingArray
+$SwitchingDGV.RowHeadersVisible = $false
+$SwitchingDGV.ColumnHeadersVisible = $true
+$SwitchingDGV.AllowUserToOrderColumns = $true
+$SwitchingDGV.AllowUserToResizeColumns = $true
+$SwitchingDGV.AllowUserToResizeRows = $false
+$SwitchingDGV.ReadOnly = $true
 $SwitchingPageControls += $SwitchingDGV
 
 # Estimations Page Controls
-$EstimationsDGV = New-Object system.Windows.Forms.DataGridView
-$EstimationsDGV.width = 712
-$EstimationsDGV.height = 350
-$EstimationsDGV.location = New-Object System.Drawing.Point(2, 2)
+$EstimationsDGV = New-Object System.Windows.Forms.DataGridView
+$EstimationsDGV.Width = 708
+$EstimationsDGV.Height = 330
+$EstimationsDGV.Location = [System.Drawing.Point]::new(2, 2)
 $EstimationsDGV.DataBindings.DefaultDataSourceUpdateMode = 0
-$EstimationsDGV.AutoSizeColumnsMode = "Fill"
-$EstimationsDGV.RowHeadersVisible = $False
-
-# Config Page Controls
-$ConfigPageControls = @()
-
-$LabelWorkerName = New-Object system.Windows.Forms.Label
-$LabelWorkerName.text = "Worker Name"
-$LabelWorkerName.AutoSize = $false
-$LabelWorkerName.width = 120
-$LabelWorkerName.height = 20
-$LabelWorkerName.location = New-Object System.Drawing.Point(2, 2)
-$LabelWorkerName.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelWorkerName
-
-$TBWorkerName = New-Object system.Windows.Forms.TextBox
-$TBWorkerName.Tag = "WorkerName"
-$TBWorkerName.MultiLine = $False
-# $TBWorkerName.Scrollbars              = "Vertical" 
-$TBWorkerName.text = $Config.WorkerName
-$TBWorkerName.AutoSize = $false
-$TBWorkerName.width = 300
-$TBWorkerName.height = 20
-$TBWorkerName.location = New-Object System.Drawing.Point(122, 2)
-$TBWorkerName.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBWorkerName
-
-     
-$LabelUserName = New-Object system.Windows.Forms.Label
-$LabelUserName.text = "MPH UserName"
-$LabelUserName.AutoSize = $false
-$LabelUserName.width = 120
-$LabelUserName.height = 20
-$LabelUserName.location = New-Object System.Drawing.Point(2, 24)
-$LabelUserName.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelUserName
-
-$TBUserName = New-Object system.Windows.Forms.TextBox
-$TBUserName.Tag = "UserName"
-$TBUserName.MultiLine = $False
-# $TBUserName.Scrollbars                = "Vertical" 
-$TBUserName.text = $Config.UserName
-$TBUserName.AutoSize = $false
-$TBUserName.width = 300
-$TBUserName.height = 20
-$TBUserName.location = New-Object System.Drawing.Point(122, 24)
-$TBUserName.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBUserName
-
-$LabelInterval = New-Object system.Windows.Forms.Label
-$LabelInterval.text = "Interval"
-$LabelInterval.AutoSize = $false
-$LabelInterval.width = 120
-$LabelInterval.height = 20
-$LabelInterval.location = New-Object System.Drawing.Point(2, 46)
-$LabelInterval.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelInterval
-
-$TBInterval = New-Object system.Windows.Forms.TextBox
-$TBInterval.Tag = "Interval"
-$TBInterval.MultiLine = $False
-# $TBWorkerName.Scrollbars              = "Vertical" 
-$TBInterval.text = $Config.Interval
-$TBInterval.AutoSize = $false
-$TBInterval.width = 300
-$TBInterval.height = 20
-$TBInterval.location = New-Object System.Drawing.Point(122, 46)
-$TBInterval.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBInterval
-
-$LabelLocation = New-Object system.Windows.Forms.Label
-$LabelLocation.text = "Location"
-$LabelLocation.AutoSize = $false
-$LabelLocation.width = 120
-$LabelLocation.height = 20
-$LabelLocation.location = New-Object System.Drawing.Point(2, 68)
-$LabelLocation.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelLocation
-
-$TBLocation = New-Object system.Windows.Forms.TextBox
-$TBLocation.Tag = "Location"
-$TBLocation.MultiLine = $False
-# $TBLocation.Scrollbars                = "Vertical" 
-$TBLocation.text = $Config.Location
-$TBLocation.AutoSize = $false
-$TBLocation.width = 300
-$TBLocation.height = 20
-$TBLocation.location = New-Object System.Drawing.Point(122, 68)
-$TBLocation.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBLocation
-
-$LabelGPUCount = New-Object system.Windows.Forms.Label
-$LabelGPUCount.text = "GPU Count"
-$LabelGPUCount.AutoSize = $false
-$LabelGPUCount.width = 120
-$LabelGPUCount.height = 20
-$LabelGPUCount.location = New-Object System.Drawing.Point(2, 90)
-$LabelGPUCount.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelGPUCount
-
-$TBGPUCount = New-Object system.Windows.Forms.TextBox
-$TBGPUCount.Tag = "GPUCount"
-$TBGPUCount.MultiLine = $False
-# $TBGPUCount.Scrollbars                = "Vertical" 
-$TBGPUCount.text = $Config.GPUCount
-$TBGPUCount.AutoSize = $false
-$TBGPUCount.width = 50
-$TBGPUCount.height = 20
-$TBGPUCount.location = New-Object System.Drawing.Point(122, 90)
-$TBGPUCount.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBGPUCount
-
-$CheckBoxDisableGPU0 = New-Object system.Windows.Forms.CheckBox
-$CheckBoxDisableGPU0.Tag = "DisableGPU0"
-$CheckBoxDisableGPU0.text = "Disable GPU0"
-$CheckBoxDisableGPU0.AutoSize = $false
-$CheckBoxDisableGPU0.width = 140
-$CheckBoxDisableGPU0.height = 20
-$CheckBoxDisableGPU0.location = New-Object System.Drawing.Point(177, 90)
-$CheckBoxDisableGPU0.Font = 'Microsoft Sans Serif,10'
-$CheckBoxDisableGPU0.Checked = $Config.DisableGPU0
-$ConfigPageControls += $CheckBoxDisableGPU0
-    
-$ButtonDetectGPU = New-Object system.Windows.Forms.Button
-$ButtonDetectGPU.text = "Detect GPU"
-$ButtonDetectGPU.width = 100
-$ButtonDetectGPU.height = 20
-$ButtonDetectGPU.location = New-Object System.Drawing.Point(320, 90)
-$ButtonDetectGPU.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $ButtonDetectGPU
-
-$ButtonDetectGPU.Add_Click( {$TBGPUCount.text = DetectGPUCount})
-
-$LabelAlgos = New-Object system.Windows.Forms.Label
-$LabelAlgos.text = "Algorithm"
-$LabelAlgos.AutoSize = $false
-$LabelAlgos.width = 120
-$LabelAlgos.height = 20
-$LabelAlgos.location = New-Object System.Drawing.Point(2, 112)
-$LabelAlgos.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelAlgos
-
-$TBAlgos = New-Object system.Windows.Forms.TextBox
-$TBAlgos.Tag = "Algorithm"
-$TBAlgos.MultiLine = $False
-# $TBAlgos.Scrollbars               = "Vertical" 
-$TBAlgos.text = $Config.Algorithm -Join ","
-$TBAlgos.AutoSize = $false
-$TBAlgos.width = 300
-$TBAlgos.height = 20
-$TBAlgos.location = New-Object System.Drawing.Point(122, 112)
-$TBAlgos.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBAlgos
-
-$LabelCurrency = New-Object system.Windows.Forms.Label
-$LabelCurrency.text = "Currency"
-$LabelCurrency.AutoSize = $false
-$LabelCurrency.width = 120
-$LabelCurrency.height = 20
-$LabelCurrency.location = New-Object System.Drawing.Point(2, 134)
-$LabelCurrency.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelCurrency
-
-$TBCurrency = New-Object system.Windows.Forms.TextBox
-$TBCurrency.Tag = "Currency"
-$TBCurrency.MultiLine = $False
-# $TBCurrency.Scrollbars                = "Vertical" 
-$TBCurrency.text = $Config.Currency
-$TBCurrency.AutoSize = $false
-$TBCurrency.width = 300
-$TBCurrency.height = 20
-$TBCurrency.location = New-Object System.Drawing.Point(122, 134)
-$TBCurrency.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBCurrency
-
-$LabelPwdCurrency = New-Object system.Windows.Forms.Label
-$LabelPwdCurrency.text = "Pwd Currency"
-$LabelPwdCurrency.AutoSize = $false
-$LabelPwdCurrency.width = 120
-$LabelPwdCurrency.height = 20
-$LabelPwdCurrency.location = New-Object System.Drawing.Point(2, 156)
-$LabelPwdCurrency.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelPwdCurrency
-
-$TBPwdCurrency = New-Object system.Windows.Forms.TextBox
-$TBPwdCurrency.Tag = "Passwordcurrency"
-$TBPwdCurrency.MultiLine = $False
-# $TBPwdCurrency.Scrollbars             = "Vertical" 
-$TBPwdCurrency.text = $Config.Passwordcurrency
-$TBPwdCurrency.AutoSize = $false
-$TBPwdCurrency.width = 300
-$TBPwdCurrency.height = 20
-$TBPwdCurrency.location = New-Object System.Drawing.Point(122, 156)
-$TBPwdCurrency.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBPwdCurrency
-
-$LabelDonate = New-Object system.Windows.Forms.Label
-$LabelDonate.text = "Donate (min)"
-$LabelDonate.AutoSize = $false
-$LabelDonate.width = 120
-$LabelDonate.height = 20
-$LabelDonate.location = New-Object System.Drawing.Point(2, 178)
-$LabelDonate.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelDonate
-
-$TBDonate = New-Object system.Windows.Forms.TextBox
-$TBDonate.Tag = "Donate"
-$TBDonate.MultiLine = $False
-# $TBDonate.Scrollbars              = "Vertical" 
-$TBDonate.text = $Config.Donate
-$TBDonate.AutoSize = $false
-$TBDonate.width = 300
-$TBDonate.height = 20
-$TBDonate.location = New-Object System.Drawing.Point(122, 178)
-$TBDonate.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBDonate
-
-$LabelProxy = New-Object system.Windows.Forms.Label
-$LabelProxy.text = "Proxy"
-$LabelProxy.AutoSize = $false
-$LabelProxy.width = 120
-$LabelProxy.height = 20
-$LabelProxy.location = New-Object System.Drawing.Point(2, 202)
-$LabelProxy.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelProxy
-
-$TBProxy = New-Object system.Windows.Forms.TextBox
-$TBProxy.Tag = "Proxy"
-$TBProxy.MultiLine = $False
-# $TBProxy.Scrollbars               = "Vertical" 
-$TBProxy.text = $Config.Proxy
-$TBProxy.AutoSize = $false
-$TBProxy.width = 300
-$TBProxy.height = 20
-$TBProxy.location = New-Object System.Drawing.Point(122, 202)    
-$TBProxy.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBProxy
-
-$LabelActiveMinerGainPct = New-Object system.Windows.Forms.Label
-$LabelActiveMinerGainPct.text = "ActiveMinerGain%"
-$LabelActiveMinerGainPct.AutoSize = $false
-$LabelActiveMinerGainPct.width = 120
-$LabelActiveMinerGainPct.height = 20
-$LabelActiveMinerGainPct.location = New-Object System.Drawing.Point(2, 224)
-$LabelActiveMinerGainPct.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelActiveMinerGainPct
-
-$TBActiveMinerGainPct = New-Object system.Windows.Forms.TextBox
-$TBActiveMinerGainPct.Tag = "ActiveMinerGainPct"
-$TBActiveMinerGainPct.MultiLine = $False
-# $TBActiveMinerGainPct.Scrollbars              = "Vertical" 
-$TBActiveMinerGainPct.text = $Config.ActiveMinerGainPct
-$TBActiveMinerGainPct.AutoSize = $false
-$TBActiveMinerGainPct.width = 300
-$TBActiveMinerGainPct.height = 20
-$TBActiveMinerGainPct.location = New-Object System.Drawing.Point(122, 224)
-$TBActiveMinerGainPct.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBActiveMinerGainPct
-
-$LabelMPHAPIKey = New-Object system.Windows.Forms.Label
-$LabelMPHAPIKey.text = "MPH API Key"
-$LabelMPHAPIKey.AutoSize = $false
-$LabelMPHAPIKey.width = 120
-$LabelMPHAPIKey.height = 20
-$LabelMPHAPIKey.location = New-Object System.Drawing.Point(2, 246)
-$LabelMPHAPIKey.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelMPHAPIKey
-
-$TBMPHAPIKey = New-Object system.Windows.Forms.TextBox
-$TBMPHAPIKey.Tag = "APIKEY"
-$TBMPHAPIKey.MultiLine = $False
-$TBMPHAPIKey.text = $Config.APIKEY
-$TBMPHAPIKey.AutoSize = $false
-$TBMPHAPIKey.width = 300
-$TBMPHAPIKey.height = 20
-$TBMPHAPIKey.location = New-Object System.Drawing.Point(122, 246)
-$TBMPHAPIKey.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $TBMPHAPIKey
-
-$LabelMinersTypes = New-Object system.Windows.Forms.Label
-$LabelMinersTypes.text = "Miners Types"
-$LabelMinersTypes.AutoSize = $false
-$LabelMinersTypes.width = 120
-$LabelMinersTypes.height = 20
-$LabelMinersTypes.location = New-Object System.Drawing.Point(2, 268)
-$LabelMinersTypes.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelMinersTypes
-
-$CheckBoxMinerTypeCPU = New-Object system.Windows.Forms.CheckBox
-$CheckBoxMinerTypeCPU.Tag = "TypeCPU"
-$CheckBoxMinerTypeCPU.text = "CPU"
-$CheckBoxMinerTypeCPU.AutoSize = $false
-$CheckBoxMinerTypeCPU.width = 60
-$CheckBoxMinerTypeCPU.height = 20
-$CheckBoxMinerTypeCPU.location = New-Object System.Drawing.Point(124, 268)
-$CheckBoxMinerTypeCPU.Font = 'Microsoft Sans Serif,10'
-$CheckBoxMinerTypeCPU.Checked = ($CheckBoxMinerTypeCPU.text -in $Config.Type)
-$ConfigPageControls += $CheckBoxMinerTypeCPU
-    
-$CheckBoxMinerTypeCPU.Add_Click( {
-        If ($This.checked -and $This.Text -notin $Config.Type) {
-            [Array]$Config.Type += $This.Text
-            # If ($Variables."$($This.Text)MinerAPITCPPort" -eq $Null){
-            If ($Variables."$($This.Text)MinerAPITCPPort" -eq $Null -or ($Variables.ActiveMinerPrograms | ? {$_.Status -eq "Running" -and $_.Type -eq $This.Text}) -eq $null) {
-                # Find available TCP Ports
-                $StartPort = 4068
-                Update-Status("Finding available TCP Port for $($This.Text)")
-                $Port = Get-FreeTcpPort($StartPort)
-                $Variables | Add-Member -Force @{"$($This.Text)MinerAPITCPPort" = $Port}
-                Update-Status("Miners API Port: $($Port)")
-                $StartPort = $Port + 1
-            }
-        }
-        else {$Config.Type = @($Config.Type | ? {$_ -ne $This.Text})}
-    })
-
-$CheckBoxMinerTypeNVIDIA = New-Object system.Windows.Forms.CheckBox
-$CheckBoxMinerTypeNVIDIA.Tag = "TypeNVIDIA"
-$CheckBoxMinerTypeNVIDIA.text = "NVIDIA"
-$CheckBoxMinerTypeNVIDIA.AutoSize = $false
-$CheckBoxMinerTypeNVIDIA.width = 100
-$CheckBoxMinerTypeNVIDIA.height = 20
-$CheckBoxMinerTypeNVIDIA.location = New-Object System.Drawing.Point(186, 268)
-$CheckBoxMinerTypeNVIDIA.Font = 'Microsoft Sans Serif,10'
-$CheckBoxMinerTypeNVIDIA.Checked = ($CheckBoxMinerTypeNVIDIA.text -in $Config.Type)
-$ConfigPageControls += $CheckBoxMinerTypeNVIDIA
-
-$CheckBoxMinerTypeNVIDIA.Add_Click( {
-        If ($This.checked -and $This.Text -notin $Config.Type) {
-            [Array]$Config.Type += $This.Text
-            If ($Variables."$($This.Text)MinerAPITCPPort" -eq $Null -or ($Variables.ActiveMinerPrograms | ? {$_.Status -eq "Running" -and $_.Type -eq $This.Text}) -eq $null) {
-                # Find available TCP Ports
-                $StartPort = 4068
-                Update-Status("Finding available TCP Port for $($This.Text)")
-                $Port = Get-FreeTcpPort($StartPort)
-                $Variables | Add-Member -Force @{"$($This.Text)MinerAPITCPPort" = $Port}
-                Update-Status("Miners API Port: $($Port)")
-                $StartPort = $Port + 1
-            }
-        }
-        else {$Config.Type = @($Config.Type | ? {$_ -ne $This.Text})}
-    })
-
-$CheckBoxAutostart = New-Object system.Windows.Forms.CheckBox
-$CheckBoxAutostart.Tag = "Autostart"
-$CheckBoxAutostart.text = "Auto Start"
-$CheckBoxAutostart.AutoSize = $false
-$CheckBoxAutostart.width = 100
-$CheckBoxAutostart.height = 20
-$CheckBoxAutostart.location = New-Object System.Drawing.Point(560, 2)
-$CheckBoxAutostart.Font = 'Microsoft Sans Serif,10'
-$CheckBoxAutostart.Checked = $Config.Autostart
-$ConfigPageControls += $CheckBoxAutostart
-
-$CheckBoxAutoStart.Add_Click( {
-        # Disable CheckBoxStartPaused and mine when idle when Auto Start is unchecked
-        if ($CheckBoxAutoStart.Checked) {
-            $CheckBoxStartPaused.Enabled = $True
-            $CheckBoxMineWhenIdle.Enabled = $True
-            $TBIdleSec.Enabled = $True
-        }
-        else {
-            $CheckBoxStartPaused.Checked = $False
-            $CheckBoxStartPaused.Enabled = $False
-            $CheckBoxMineWhenIdle.Checked = $False
-            $CheckBoxMineWhenIdle.Enabled = $False
-            $TBIdleSec.Enabled = $False
-        }
-    })
-
-$CheckBoxStartPaused = New-Object system.Windows.Forms.CheckBox
-$CheckBoxStartPaused.Tag = "StartPaused"
-$CheckBoxStartPaused.text = "Pause on Auto Start"
-$CheckBoxStartPaused.AutoSize = $false
-$CheckBoxStartPaused.width = 160
-$CheckBoxStartPaused.height = 20
-$CheckBoxStartPaused.location = New-Object System.Drawing.Point(560, 24)
-$CheckBoxStartPaused.Font = 'Microsoft Sans Serif,10'
-$CheckBoxStartPaused.Checked = $Config.StartPaused
-$CheckBoxStartPaused.Enabled = $CheckBoxAutoStart.Checked
-$ConfigPageControls += $CheckBoxStartPaused
-
-$CheckBoxMineWhenIdle = New-Object system.Windows.Forms.CheckBox
-$CheckBoxMineWhenIdle.Tag = "MineWhenIdle"
-$CheckBoxMineWhenIdle.text = "Mine only when idle"
-$CheckBoxMineWhenIdle.AutoSize = $false
-$CheckBoxMineWhenIdle.width = 160
-$CheckBoxMineWhenIdle.height = 20
-$CheckBoxMineWhenIdle.location = New-Object System.Drawing.Point(560, 46)
-$CheckBoxMineWhenIdle.Font = 'Microsoft Sans Serif,10'
-$CheckBoxMineWhenIdle.Checked = $Config.MineWhenIdle
-$CheckBoxMineWhenIdle.Enabled = $CheckBoxAutoStart.Checked
-$ConfigPageControls += $CheckBoxMineWhenIdle
-
-$TBIdleSec = New-Object system.Windows.Forms.TextBox
-$TBIdleSec.Tag = "IdleSec"
-$TBIdleSec.MultiLine = $False
-$TBIdleSec.text = if ($Config.IdleSec -gt 1) {$Config.IdleSec} else {120}
-$TBIdleSec.AutoSize = $false
-$TBIdleSec.width = 50
-$TBIdleSec.height = 20
-$TBIdleSec.location = New-Object System.Drawing.Point(580, 68)
-$TBIdleSec.Font = 'Microsoft Sans Serif,10'
-$TBIdleSec.Enabled = $CheckBoxAutoStart.Checked
-$ConfigPageControls += $TBIdleSec
-
-$LabelIdleSec = New-Object system.Windows.Forms.Label
-$LabelIdleSec.text = "seconds"
-$LabelIdleSec.AutoSize = $false
-$LabelIdleSec.width = 60
-$LabelIdleSec.height = 20
-$LabelIdleSec.location = New-Object System.Drawing.Point(630, 68)
-$LabelIdleSec.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $LabelIdleSec
-
-$CheckBoxEarningTrackerLogs = New-Object system.Windows.Forms.CheckBox
-$CheckBoxEarningTrackerLogs.Tag = "EnableEarningsTrackerLogs"
-$CheckBoxEarningTrackerLogs.text = "Earnings Tracker Logs"
-$CheckBoxEarningTrackerLogs.AutoSize = $false
-$CheckBoxEarningTrackerLogs.width = 160
-$CheckBoxEarningTrackerLogs.height = 20
-$CheckBoxEarningTrackerLogs.location = New-Object System.Drawing.Point(560, 90)
-$CheckBoxEarningTrackerLogs.Font = 'Microsoft Sans Serif,10'
-$CheckBoxEarningTrackerLogs.Checked = $Config.EnableEarningsTrackerLogs
-$ConfigPageControls += $CheckBoxEarningTrackerLogs
-
-$CheckBoxGUIMinimized = New-Object system.Windows.Forms.CheckBox
-$CheckBoxGUIMinimized.Tag = "StartGUIMinimized"
-$CheckBoxGUIMinimized.text = "Start UI minimized"
-$CheckBoxGUIMinimized.AutoSize = $false
-$CheckBoxGUIMinimized.width = 160
-$CheckBoxGUIMinimized.height = 20
-$CheckBoxGUIMinimized.location = New-Object System.Drawing.Point(560, 112)
-$CheckBoxGUIMinimized.Font = 'Microsoft Sans Serif,10'
-$CheckBoxGUIMinimized.Checked = $Config.StartGUIMinimized
-$ConfigPageControls += $CheckBoxGUIMinimized
-
-$CheckBoxAutoUpdate = New-Object system.Windows.Forms.CheckBox
-$CheckBoxAutoUpdate.Tag = "AutoUpdate"
-$CheckBoxAutoUpdate.text = "Auto Update"
-$CheckBoxAutoUpdate.AutoSize = $true
-$CheckBoxAutoUpdate.width = 100
-$CheckBoxAutoUpdate.height = 20
-$CheckBoxAutoUpdate.location = New-Object System.Drawing.Point(560, 134)
-$CheckBoxAutoUpdate.Font = 'Microsoft Sans Serif,10'
-$CheckBoxAutoUpdate.Checked = $Config.AutoUpdate
-# $CheckBoxAutoUpdate.Enabled               =   $False
-$ConfigPageControls += $CheckBoxAutoUpdate
-
-$CheckBoxIncludeRegularMiners = New-Object system.Windows.Forms.CheckBox
-$CheckBoxIncludeRegularMiners.Tag = "IncludeRegularMiners"
-$CheckBoxIncludeRegularMiners.text = "Regular Miners"
-$CheckBoxIncludeRegularMiners.AutoSize = $false
-$CheckBoxIncludeRegularMiners.width = 160
-$CheckBoxIncludeRegularMiners.height = 20
-$CheckBoxIncludeRegularMiners.location = New-Object System.Drawing.Point(560, 156)
-$CheckBoxIncludeRegularMiners.Font = 'Microsoft Sans Serif,10'
-$CheckBoxIncludeRegularMiners.Checked = $Config.IncludeRegularMiners
-$ConfigPageControls += $CheckBoxIncludeRegularMiners
-
-$CheckBoxIncludeOptionalMiners = New-Object system.Windows.Forms.CheckBox
-$CheckBoxIncludeOptionalMiners.Tag = "IncludeOptionalMiners"
-$CheckBoxIncludeOptionalMiners.text = "Optional Miners"
-$CheckBoxIncludeOptionalMiners.AutoSize = $false
-$CheckBoxIncludeOptionalMiners.width = 160
-$CheckBoxIncludeOptionalMiners.height = 20
-$CheckBoxIncludeOptionalMiners.location = New-Object System.Drawing.Point(560, 178)
-$CheckBoxIncludeOptionalMiners.Font = 'Microsoft Sans Serif,10'
-$CheckBoxIncludeOptionalMiners.Checked = $Config.IncludeOptionalMiners
-$ConfigPageControls += $CheckBoxIncludeOptionalMiners
-
-$CheckBoxConsole = New-Object system.Windows.Forms.CheckBox
-$CheckBoxConsole.Tag = "HideConsole"
-$CheckBoxConsole.text = "Hide Console"
-$CheckBoxConsole.AutoSize = $false
-$CheckBoxConsole.width = 160
-$CheckBoxConsole.height = 20
-$CheckBoxConsole.location = New-Object System.Drawing.Point(560, 200)
-$CheckBoxConsole.Font = 'Microsoft Sans Serif,10'
-$CheckBoxConsole.Checked = $Config.HideConsole
-$ConfigPageControls += $CheckBoxConsole
-
-$ButtonLoadDefaultPoolsAlgos = New-Object system.Windows.Forms.Button
-$ButtonLoadDefaultPoolsAlgos.text = "Load default algos for selected pools"
-$ButtonLoadDefaultPoolsAlgos.width = 250
-$ButtonLoadDefaultPoolsAlgos.height = 30
-$ButtonLoadDefaultPoolsAlgos.location = New-Object System.Drawing.Point(358, 300)
-$ButtonLoadDefaultPoolsAlgos.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $ButtonLoadDefaultPoolsAlgos
-    
-$ButtonLoadDefaultPoolsAlgos.Add_Click( {
-        try {
-            $PoolsAlgos = Invoke-WebRequest "https://nemosminer.com/data/PoolsAlgos.json" -TimeoutSec 15 -UseBasicParsing -Headers @{"Cache-Control" = "no-cache"} | ConvertFrom-Json; $PoolsAlgos | ConvertTo-json | Out-File ".\Config\PoolsAlgos.json" 
-        }
-        catch { $PoolsAlgos = Get-content ".\Config\PoolsAlgos.json" | Convertfrom-json}
-        If ($PoolsAlgos) {
-            $PoolsAlgos = $PoolsAlgos.PSObject.Properties | ? {$_.Name -in $Config.PoolName}
-            $PoolsAlgos = $PoolsAlgos.Value | sort -Unique
-            $TBAlgos.text = $PoolsAlgos -Join ","
-        }
-    })
-    
-$ButtonWriteConfig = New-Object system.Windows.Forms.Button
-$ButtonWriteConfig.text = "Save Config"
-$ButtonWriteConfig.width = 100
-$ButtonWriteConfig.height = 30
-$ButtonWriteConfig.location = New-Object System.Drawing.Point(610, 300)
-$ButtonWriteConfig.Font = 'Microsoft Sans Serif,10'
-$ConfigPageControls += $ButtonWriteConfig
-
-$ButtonWriteConfig.Add_Click( {PrepareWriteConfig})
-
-$LabelPoolsSelect = New-Object system.Windows.Forms.Label
-$LabelPoolsSelect.text = "Do not select multiple variants of the same pool"
-$LabelPoolsSelect.AutoSize = $false
-$LabelPoolsSelect.width = 130
-$LabelPoolsSelect.height = 50
-$LabelPoolsSelect.location = New-Object System.Drawing.Point(427, 2)
-$LabelPoolsSelect.Font = 'Microsoft Sans Serif,10'
-$LabelPoolsSelect.TextAlign = 'MiddleCenter'
-$LabelPoolsSelect.BorderStyle = 'FixedSingle'
-$ConfigPageControls += $LabelPoolsSelect
-
-$CheckedListBoxPools = New-Object System.Windows.Forms.CheckedListBox
-$CheckedListBoxPools.Tag = "PoolName"
-$CheckedListBoxPools.height = 240
-$CheckedListBoxPools.width = 130
-$CheckedListBoxPools.text = "Pools"
-$CheckedListBoxPools.location = New-Object System.Drawing.Point(427, 54)
-$CheckedListBoxPools.CheckOnClick = $True
-$CheckedListBoxPools.BackColor = [System.Drawing.SystemColors]::Control
-$CheckedListBoxPools.Items.Clear()
-$CheckedListBoxPools.Items.AddRange(((Get-ChildItem ".\Pools").BaseName | sort -Unique))
-$CheckedListBoxPools.add_SelectedIndexChanged( {CheckedListBoxPools_Click($This)})
-$Config.PoolName | foreach {$CheckedListBoxPools.SetItemChecked($CheckedListBoxPools.Items.IndexOf($_), $True)}
-    
-$ConfigPageControls += $CheckedListBoxPools
+$EstimationsDGV.RowHeadersVisible = $false
+$EstimationsDGV.ColumnHeadersVisible = $true
+$EstimationsDGV.AllowUserToOrderColumns = $true
+$EstimationsDGV.AllowUserToResizeColumns = $true
+$EstimationsDGV.AllowUserToResizeRows = $false
+$EstimationsDGV.ReadOnly = $true
 
 # Monitoring Page Controls
 $MonitoringPageControls = @()
-$MonitoringSettingsControls = @()
 
-$LabelMonitoringWorkers = New-Object system.Windows.Forms.Label
-$LabelMonitoringWorkers.text = "Worker Status"
+$LabelMonitoringWorkers = New-Object System.Windows.Forms.Label
+$LabelMonitoringWorkers.Text = "Worker Status"
 $LabelMonitoringWorkers.AutoSize = $false
-$LabelMonitoringWorkers.width = 710
-$LabelMonitoringWorkers.height = 20
-$LabelMonitoringWorkers.location = New-Object System.Drawing.Point(2, 4)
-$LabelMonitoringWorkers.Font = 'Microsoft Sans Serif,10'
+$LabelMonitoringWorkers.Width = 708
+$LabelMonitoringWorkers.Height = 18
+$LabelMonitoringWorkers.Location = [System.Drawing.Point]::new(2, 4)
+$LabelMonitoringWorkers.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
 $MonitoringPageControls += $LabelMonitoringWorkers
 
-$WorkersDGV = New-Object system.Windows.Forms.DataGridView
-$WorkersDGV.width = 710
-$WorkersDGV.height = 244
-$WorkersDGV.location = New-Object System.Drawing.Point(2, 24)
+$WorkersDGV = New-Object System.Windows.Forms.DataGridView
+$WorkersDGV.Width = 708
+$WorkersDGV.Height = 275
+$WorkersDGV.Location = [System.Drawing.Point]::new(2, 22)
 $WorkersDGV.DataBindings.DefaultDataSourceUpdateMode = 0
-$WorkersDGV.AutoSizeColumnsMode = "AllCells"
-$WorkersDGV.RowHeadersVisible = $False
+$WorkersDGV.RowHeadersVisible = $false
+$WorkersDGV.ColumnHeadersVisible = $true
+$WorkersDGV.AllowUserToOrderColumns = $true
+$WorkersDGV.AllowUserToResizeColumns = $true
+$WorkersDGV.AllowUserToResizeRows = $false
+$WorkersDGV.ReadOnly = $true
 $MonitoringPageControls += $WorkersDGV
 
-$GroupMonitoringSettings = New-Object system.Windows.Forms.GroupBox
-$GroupMonitoringSettings.Height = 60
-$GroupMonitoringSettings.Width = 710
-$GroupMonitoringSettings.Text = "Monitoring Settings"
-$GroupMonitoringSettings.Location = New-Object System.Drawing.Point(1, 272)
-$MonitoringPageControls += $GroupMonitoringSettings
+$ConfigMonitoringInGUI = New-Object System.Windows.Forms.LinkLabel
+$ConfigMonitoringInGUI.Location = New-Object System.Drawing.Size(2, 304)
+$ConfigMonitoringInGUI.Size = New-Object System.Drawing.Size(355, 20)
+$ConfigMonitoringInGUI.LinkColor = [System.Drawing.Color]::Blue
+$ConfigMonitoringInGUI.ActiveLinkColor = [System.Drawing.Color]::Blue
+$ConfigMonitoringInGUI.Font = [System.Drawing.Font]::new("Microsoft Sans Serif", 10)
+$ConfigMonitoringInGUI.TextAlign = "MiddleLeft"
+$ConfigMonitoringInGUI.Text = "To edit the monitoring settings use the Web GUI"
+$ConfigMonitoringInGUI.Add_Click( { Start-Process "http://localhost:$($Config.APIPort)/rigmonitor.html" })
+$MonitoringPageControls += $ConfigMonitoringInGUI
 
-$LabelMonitoringServer = New-Object system.Windows.Forms.Label
-$LabelMonitoringServer.text = "Server"
-$LabelMonitoringServer.AutoSize = $false
-$LabelMonitoringServer.width = 60
-$LabelMonitoringServer.height = 20
-$LabelMonitoringServer.location = New-Object System.Drawing.Point(2, 15)
-$LabelMonitoringServer.Font = 'Microsoft Sans Serif,10'
-$MonitoringSettingsControls += $LabelMonitoringServer
-
-$TBMonitoringServer = New-Object system.Windows.Forms.TextBox
-$TBMonitoringServer.Tag = "MonitoringServer"
-$TBMonitoringServer.MultiLine = $False
-$TBMonitoringServer.text = $Config.MonitoringServer
-$TBMonitoringServer.AutoSize = $false
-$TBMonitoringServer.width = 260
-$TBMonitoringServer.height = 20
-$TBMonitoringServer.location = New-Object System.Drawing.Point(62, 15)
-$TBMonitoringServer.Font = 'Microsoft Sans Serif,10'
-$MonitoringSettingsControls += $TBMonitoringServer
-
-$CheckBoxReportToServer = New-Object system.Windows.Forms.CheckBox
-$CheckBoxReportToServer.Tag = "ReportToServer"
-$CheckBoxReportToServer.text = "Report to server"
-$CheckBoxReportToServer.AutoSize = $false
-$CheckBoxReportToServer.width = 130
-$CheckBoxReportToServer.height = 20
-$CheckBoxReportToServer.location = New-Object System.Drawing.Point(324, 15)
-$CheckBoxReportToServer.Font = 'Microsoft Sans Serif,10'
-$CheckBoxReportToServer.Checked = $Config.ReportToServer
-$MonitoringSettingsControls += $CheckBoxReportToServer
-
-$CheckBoxShowWorkerStatus = New-Object system.Windows.Forms.CheckBox
-$CheckBoxShowWorkerStatus.Tag = "ShowWorkerStatus"
-$CheckBoxShowWorkerStatus.text = "Show other workers"
-$CheckBoxShowWorkerStatus.AutoSize = $false
-$CheckBoxShowWorkerStatus.width = 145
-$CheckBoxShowWorkerStatus.height = 20
-$CheckBoxShowWorkerStatus.location = New-Object System.Drawing.Point(456, 15)
-$CheckBoxShowWorkerStatus.Font = 'Microsoft Sans Serif,10'
-$CheckBoxShowWorkerStatus.Checked = $Config.ShowWorkerStatus
-$MonitoringSettingsControls += $CheckBoxShowWorkerStatus
-
-$LabelMonitoringUser = New-Object system.Windows.Forms.Label
-$LabelMonitoringUser.text = "User ID"
-$LabelMonitoringUser.AutoSize = $false
-$LabelMonitoringUser.width = 60
-$LabelMonitoringUser.height = 20
-$LabelMonitoringUser.location = New-Object System.Drawing.Point(2, 37)
-$LabelMonitoringUser.Font = 'Microsoft Sans Serif,10'
-$MonitoringSettingsControls += $LabelMonitoringUser
-
-$TBMonitoringUser = New-Object system.Windows.Forms.TextBox
-$TBMonitoringUser.Tag = "MonitoringUser"
-$TBMonitoringUser.MultiLine = $False
-$TBMonitoringUser.text = $Config.MonitoringUser
-$TBMonitoringUser.AutoSize = $false
-$TBMonitoringUser.width = 260
-$TBMonitoringUser.height = 20
-$TBMonitoringUser.location = New-Object System.Drawing.Point(62, 37)
-$TBMonitoringUser.Font = 'Microsoft Sans Serif,10'
-$MonitoringSettingsControls += $TBMonitoringUser
-
-$ButtonGenerateMonitoringUser = New-Object system.Windows.Forms.Button
-$ButtonGenerateMonitoringUser.text = "Generate New User ID"
-$ButtonGenerateMonitoringUser.width = 160
-$ButtonGenerateMonitoringUser.height = 20
-$ButtonGenerateMonitoringUser.location = New-Object System.Drawing.Point(324, 37)
-$ButtonGenerateMonitoringUser.Font = 'Microsoft Sans Serif,10'
-$ButtonGenerateMonitoringUser.Enabled = ($TBMonitoringUser.text -eq "")
-$MonitoringSettingsControls += $ButtonGenerateMonitoringUser
-
-$ButtonGenerateMonitoringUser.Add_Click( {$TBMonitoringUser.text = [GUID]::NewGuid()})
-# Only enable the generate button when user is blank.
-$TBMonitoringUser.Add_TextChanged( { $ButtonGenerateMonitoringUser.Enabled = ($TBMonitoringUser.text -eq "") })
-
-
-$ButtonMonitoringWriteConfig = New-Object system.Windows.Forms.Button
-$ButtonMonitoringWriteConfig.text = "Save Config"
-$ButtonMonitoringWriteConfig.width = 100
-$ButtonMonitoringWriteConfig.height = 30
-$ButtonMonitoringWriteConfig.location = New-Object System.Drawing.Point(600, 15)
-$ButtonMonitoringWriteConfig.Font = 'Microsoft Sans Serif,10'
-$MonitoringSettingsControls += $ButtonMonitoringWriteConfig
-$ButtonMonitoringWriteConfig.Add_Click( {PrepareWriteConfig})
-
-
-
-# ***
-
-$MainForm | Add-Member -Name number -Value 0 -MemberType NoteProperty
+$MainForm | Add-Member -Name Number -Value 0 -MemberType NoteProperty
 
 $TimerUI = New-Object System.Windows.Forms.Timer
-# $TimerUI.Add_Tick({TimerUI_Tick})
+$TimerUI.Enabled = $false
 
-$TimerUI.Stop()
-$ButtonPause.Add_Click( {
-        If (!$Variables.Paused) {
-            Update-Status("Stopping miners")
-            $Variables.Paused = $True
+$ButtonPause.Add_Click(
+    { 
+        $Variables.NewMiningStatus = "Paused"
+        $Variables.RestartCycle = $true
+    }
+)
 
-            # Stop and start mining to immediately switch to paused state without waiting for current NPMCycle to finish
-            $Variables.RestartCycle = $True
+$ButtonStop.Add_Click(
+    { 
+        $Variables.NewMiningStatus = "Stopped"
+        $Variables.RestartCycle = $true
+    }
+)
 
-            $ButtonPause.Text = "Mine"
-            Update-Status("Mining paused. BrainPlus and Earning tracker running.")
-        }
-        else {
-            $Variables.Paused = $False
-            $ButtonPause.Text = "Pause"
-            $Variables | Add-Member -Force @{LastDonated = (Get-Date).AddDays(-1).AddHours(1)}
-
-            # Stop and start mining to immediately switch to unpaused state without waiting for current sleep to finish
-            $Variables.RestartCycle = $True
-        }
-    })
-
-$ButtonStart.Add_Click( {
-        If ($Variables.Started) {
-            $ButtonPause.Visible = $False
-            Update-Status("Stopping cycle")
-            $Variables.Started = $False
-            Update-Status("Stopping jobs and miner")
-
-            $Variables.EarningsTrackerJobs | % {$_ | Stop-Job -PassThru | Remove-Job}
-            $Variables.EarningsTrackerJobs = @()
-            $Variables.BrainJobs | % {$_ | Stop-Job -PassThru | Remove-Job}
-            $Variables.BrainJobs = @()
-
-            Stop-Mining
-
-            # Stop idle tracking
-            if ($IdleRunspace) {$IdleRunspace.Close()}
-            if ($idlePowershell) {$idlePowershell.Dispose()}
-
-            $LabelBTCD.Text = "$($Variables.CurrentProduct) $($Variables.CurrentVersion)"
-            Update-Status("Idle")
-            $ButtonStart.Text = "Start"
-            # $TimerUI.Interval = 1000
-        }
-        else {
-            if (!(IsLoaded(".\Core.ps1"))) {. .\Core.ps1; RegisterLoaded(".\Core.ps1")}
-            if (!(IsLoaded(".\Include.ps1"))) {. .\Include.ps1; RegisterLoaded(".\Include.ps1")}
-            PrepareWriteConfig
-            $ButtonStart.Text = "Stop"
-            InitApplication
-            $Variables | add-Member -Force @{MainPath = (Split-Path $script:MyInvocation.MyCommand.Path)}
-
-            Start-IdleTracking
-
-            If ($Config.MineWhenIdle) {
-                # Disable the pause button - pausing controlled by idle timer
-                $Variables.Paused = $True
-                $ButtonPause.Visible = $False
-            }
-            else {
-                $ButtonPause.Visible = $True
-            }
-
-            Start-Mining
-        
-            $Variables.Started = $True
-        }
-    })
-
-$CheckBoxConsole.Add_Click( {
-        If ($CheckBoxConsole.Checked) {
-            $null = $ShowWindow::ShowWindowAsync($ConsoleHandle, 0)
-            Update-Status("Console window hidden")
-        }
-        else {
-            $null = $ShowWindow::ShowWindowAsync($ConsoleHandle, 8)
-            Update-Status("Console window shown")
-        }
-    })
+$ButtonStart.Add_Click(
+    { 
+        $Variables.NewMiningStatus = "Running"
+        $Variables.RestartCycle = $true
+    }
+)
 
 $ShowWindow = Add-Type -MemberDefinition '[DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);' -Name Win32ShowWindowAsync -Namespace Win32Functions -PassThru
 $ParentPID = (Get-CimInstance -Class Win32_Process -Filter "ProcessID = $pid").ParentProcessId
 $ConsoleHandle = (Get-Process -Id $ParentPID).MainWindowHandle
+$ConsoleHandle = (Get-Process -Id $pid).MainWindowHandle
 
-$MainForm.controls.AddRange($MainFormControls)
-$RunPage.controls.AddRange(@($RunPageControls))
-$SwitchingPage.controls.AddRange(@($SwitchingPageControls))
+$MainForm.Controls.AddRange($MainFormControls)
+$RunPage.Controls.AddRange(@($RunPageControls))
+$Global:EarningsPage.Controls.AddRange(@($EarningsPageControls))
+$SwitchingPage.Controls.AddRange(@($SwitchingPageControls))
 $EstimationsPage.Controls.AddRange(@($EstimationsDGV))
-$ConfigPage.controls.AddRange($ConfigPageControls)
-$GroupMonitoringSettings.Controls.AddRange($MonitoringSettingsControls)
-$MonitoringPage.controls.AddRange($MonitoringPageControls)
+$MonitoringPage.Controls.AddRange($MonitoringPageControls)
 
-$MainForm.Add_Load( {Form_Load})
-# $TimerUI.Add_Tick({TimerUI_Tick})
+$MainForm.Add_Load(
+    { 
+        Form_Load
+    }
+)
 
-[void]$MainForm.ShowDialog()
+If ($Variables.APIVersion -ne "" -and $Variables.FreshConfig -eq $true) { 
+    $wshell = New-Object -ComObject Wscript.Shell
+    $wshell.Popup("This is the first time you have started $($Variables.CurrentProduct).`n`nUse the configuration editor to change your settings and apply the configuration.`n`n`Start making money by clicking 'Start mining'.`n`nHappy Mining!", 0, "Welcome to $($Variables.CurrentProduct) v$($Variables.CurrentVersion)", 4096) | Out-Null
+    Remove-Variable wshell
+}
 
-
+[Void]$MainForm.ShowDialog()

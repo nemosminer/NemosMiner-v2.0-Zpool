@@ -1,0 +1,18 @@
+This is a Windows script which simply removes the unneeded stuff/bloatware from NVIDIA drivers package and creates a new archive.
+
+Requirements:
+a) 7-Zip installed or b) 7za.exe in your %PATH%, or in the same folder as this script
+A recent Windows version; the script is only tested on Windows 10
+
+how to remove all un-needed bloatware/telemetry from Latest Nvidia Drivers 
+
+simply download your Driver From: https://www.nvidia.com/Download/index.aspx 
+
+once downloaded, place downloaded driver in this folder, drag and drop the NVIDIA_DRIVER_FILE.exe on the bat file "slim-nvidia-drivers.bat" 
+
+this will automatically create two 7z files from the orignal Driver File 
+
+"minimal" includes only the driver
+"slim" includes the driver, HDAudio and PhysX
+
+Happy Mining 

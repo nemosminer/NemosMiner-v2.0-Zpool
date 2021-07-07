@@ -1,0 +1,152 @@
+{
+  "AHashPool": {
+    "GuaranteedPayoutCurrencies": [
+      "BTC"
+    ],
+    "PayoutThreshold": {
+      "mBTC": 3
+    },
+    "PayoutCurrency": "BTC"
+  },
+  "BlazePool": {
+    "GuaranteedPayoutCurrencies": [
+      "BTC"
+    ],
+    "PayoutThreshold": {
+      "mBTC": 3
+    },
+    "PayoutCurrency": "BTC"
+  },
+  "BlockMasters": {
+    "GuaranteedPayoutCurrencies": [
+      "BTC",
+      "LTC",
+      "DOGE"
+    ],
+    "PayoutThreshold": {
+      "mBTC": 1.65,
+      "LTC": 0.05,
+      "DODGE": 20,
+      "*": 0.00001
+    },
+    "PayoutCurrency": "[Default]"
+  },
+  "HiveON": {
+    "GuaranteedPayoutCurrencies": [
+      "ETC",
+      "ETH"
+    ],
+    "PayoutCurrencies": [
+      "ETC",
+      "ETH"
+    ],
+    "PayoutThreshold": {
+      "ETC": 1,
+      "ETH": 0.1
+    }
+  },
+  "MiningPoolHub": {
+    "GuaranteedPayoutCurrencies": [
+      "ADZ",
+      "AUR",
+      "BSTY",
+      "BCH",
+      "BTC",
+      "BTG",
+      "DASH",
+      "DGB",
+      "ESN",
+      "ETC",
+      "ETH",
+      "ETN",
+      "EXP",
+      "FTC",
+      "GAME",
+      "GRS",
+      "LTC",
+      "MAX",
+      "MONA",
+      "MUSIC",
+      "RVN",
+      "SC",
+      "START",
+      "SXC",
+      "VTC",
+      "XZC",
+      "XMR",
+      "XMY",
+      "XVG",
+      "ZCL",
+      "ZEC",
+      "ZEN"
+    ],
+    "PayoutCurrency": "[Default]"
+  },
+  "NLPool": {
+    "GuaranteedPayoutCurrencies": [
+      "BTC",
+      "LTC"
+    ],
+    "PayoutCurrency": "[Default]",
+    "PayoutThreshold": {
+      "mBTC": 2
+    }
+  },
+  "NiceHash External": {
+    "EarningsAdjustmentFactor": 1.0, // NiceHash earnings estimates are always correct
+    "GuaranteedPayoutCurrencies": [
+      "BTC" // Only BTC is supported
+    ],
+    "PayoutCurrency": "BTC", // Only BTC is supported
+    "PayoutThreshold": {
+      "mBTC": 1
+    }
+  },
+  "NiceHash Internal": {
+    "EarningsAdjustmentFactor": 1.0, // NiceHash earnings estimates are always correct
+    "GuaranteedPayoutCurrencies": [
+      "BTC" // Only BTC is supported
+    ],
+    "PayoutCurrency": "BTC", // Only BTC is supported
+    "PayoutThreshold": {
+      "mBTC": 0.5
+    }
+  },
+  "ProHashing": {
+    "GuaranteedPayoutCurrencies": [
+      "BTC",
+      "LTC"
+    ],
+    "PayoutCurrency": "[Default]",
+    "PayoutThreshold": {
+      "mBTC": 0,
+      "LTC": 0.010950859265481713,
+      "USD": 10
+    }
+  },
+  "ZergPool": {
+    "GuaranteedPayoutCurrencies": [
+      "BTC",
+      "BCH",
+      "LTC",
+      "DOGE",
+      "ETH",
+      "DASH"
+    ],
+    "PayoutCurrency": "[Default]" // PayoutThreshold is retrieved from API data, but can be set here to override value set by pool (can only set higher)
+  },
+  "Zpool": {
+    "GuaranteedPayoutCurrencies": [
+      "BTC",
+      "LTC",
+      "DASH",
+      "DGB",
+      "KMD"
+    ],
+    "PayoutCurrency": "[Default]",
+    "PayoutThreshold": {
+      "mBTC": 1.6,
+      "*": 0.0125
+    }
+  }
+}

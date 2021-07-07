@@ -1,0 +1,86 @@
+﻿<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" data-navbaractive="navbalancedata" class="h2">Balance Data</h1>
+</div>
+
+<div id="balancedata" class="alert alert-info" role="alert">This is the balance data for the last 30 days that was collected by the balance tracker.</div>
+
+<div id="toolbar">
+  <button id="remove-entry" class="btn btn-warning">Delete entry</button>
+</div>
+
+<table id="balanceobjects" class="table"
+  data-toolbar="#toolbar"
+  data-click-to-select="true"
+  data-cache="true"
+  data-toggle="table"
+  data-icons="icons"
+  data-show-button-text="true"
+  data-remember-order="true"
+  data-filter-control="true"
+  data-disable-control-when-search="true"
+  data-show-search-clear-button="true"
+  data-show-columns="true"
+  data-show-toggle="true"
+  data-show-refresh="true"
+  data-detail-view="true"
+  data-show-refresh="true"
+  data-auto-refresh="true"
+  data-auto-refresh-status="false"
+  data-detail-formatter="detailFormatter"
+  data-url="/balancedata"
+  data-sort-name="DateTime"
+  data-sort-order="desc"
+  >
+
+  <thead>
+    <tr>
+      <th data-field="state" data-checkbox="true"></th>
+      <th data-field="DateTime" data-sortable="true" data-filter-control="input" data-formatter="formatDate">Date & Time</th>
+      <th data-field="Pool" data-sortable="true" data-filter-control="select">Pool</th>
+      <th data-field="Currency" data-sortable="true" data-filter-control="select">Currency</th>
+      <th data-field="Wallet" data-sortable="true" data-visible="true" data-filter-control="select">Account</th>
+      <th data-field="Pending" data-sortable="true" data-visible="true">Pending</th>
+      <th data-field="Balance" data-sortable="true">Balance</th>
+      <th data-field="Unpaid" data-sortable="true" data-visible="true">Unpaid</th>
+      <th data-field="Earnings" data-sortable="true" data-visible="true">Earnings</th>
+      <th data-field="Delta" data-sortable="true" data-visible="true">Delta</th>
+      <th data-field="Payout" data-sortable="true" data-visible="true">Payout</th>
+      <th data-field="Paid" data-sortable="true" data-visible="true">Paid</th>
+      <th data-field="HiddenPending" data-sortable="true" data-visible="true">Hidden Pending</th>
+    </tr>
+  </thead>
+</table>
+
+<!-- Start of page scripts -->
+
+<script type="text/javascript">
+  var $table = $('#balanceobjects');
+  var $querysize = 16000;
+
+  $table.bootstrapTable({
+    height: (($(window).height()) - $('h1').outerHeight(true) - 160) * 0.985 - 20
+  });
+
+  $('#remove-entry').click(function () {
+    var $data = $table.bootstrapTable('getSelections');
+    if ($data.length >= 1) {
+      $data = JSON.stringify($data.map($element => ({DateTime: $element.DateTime, Pool: $element.Pool, Currency: $element.Currency, Wallet: $element.Wallet})));
+      if ($data.length >= $querysize) {
+        alert('Too many objects selected, cannot proceed.\nUnselect some objects and try again.\n\n(Query size: ' + $data.length + '/' + $querysize + ')');
+      }
+      else {
+        $command = '/functions/balancedata/remove?Data=' + encodeURIComponent($data);
+        $('.modal-body').load($command, function() {
+          $('.modal-title').text($('#remove-entry').text());
+          $('#myModal').modal({show:true});
+        });
+        $table.bootstrapTable('refresh');
+      }
+    }
+  });
+
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

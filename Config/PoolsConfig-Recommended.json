@@ -1,0 +1,59 @@
+{
+   "Default": {
+      "PasswordCurrency": "BTC",
+      "PricePenaltyFactor": 1,
+      "UserName": "nemo",
+      "Wallets": {
+	"BTC": "1QGADhdMRpp9Pk5u5zG1TrHKRrdK5R81TE",
+        "ETC": "0x7CF99ec9029A98AFd385f106A93977D8105Fec0f",
+        "ETH": "0x92e6F22C1493289e6AD2768E1F502Fc5b414a287"
+      },
+      "WorkerName": "NemosMiner"
+   },
+   "Blockmasters" : {
+      "Algorithm" : [
+         "+m7m"
+      ]
+   },
+   "MiningPoolHub": {
+      "Algorithm" :[
+         "+Ethash",
+         "+KawPoW"
+      ]
+   },
+   "NiceHash": {
+      "Algorithm": [
+         "+Cuckaroom",
+         "+Cuckaroo29bfc",
+         "+Cuckarooz29",
+         "+Cuckoocycle",
+         "+Cuckaroo29",
+         "+Cuckarood29",
+         "+Cuckatoo31",
+         "+Cuckatoo32",
+         "+Eaglesong",
+         "+Ethash",
+         "+Handshake"
+      ]
+   },
+   "ZergPool": {
+      "Algorithm": [
+         "+CryptonightConceal",
+         "+CryptonightHaven",
+         "+CryptonightHeavy",
+         "+CryptonightHeavyx",
+         "+CryptonightUpx",
+         "+Ethash",
+         "+Randomsfx",
+         "+Randomwow",
+         "+VerusHash",
+         "+YescryptR8g",
+         "+Yespoweriots"
+      ]
+   },
+   "ZPool": {
+       "Algorithm": [
+         "-VerusHash"
+      ]
+   }
+}

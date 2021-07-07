@@ -1,0 +1,192 @@
+<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" data-navbaractive="navearningschart" class="h2">Earnings Chart</h1>
+</div>
+
+<div class="alert alert-info" role="alert">Consolidated earnings of the last 30 active mining days<br>The data is taken from the pools API and may not yet include results from recent mining</div>
+
+<canvas id="EarningsChart" width="400" height="175" role="img"></canvas>
+
+<!-- Start of page scripts -->
+
+<script type="text/javascript">
+
+  Chart.defaults.color = 'black';
+  Chart.defaults.font.size = 16;
+
+  Colors = ['#03A9F4', '#00BCD4', '#009688', '#4CAF50', '#8BC34A', '#FFEB3B', '#FFC107', '#FF9800', '#E91E63', '#9C27B0', '#3F51B5'];
+
+  function HslColor (items, item) {
+    let hue = Math.trunc(360 / items * item);
+    // let saturation = 70;
+    let saturation = 50 + (25 * (item % 2));
+    let lightness = 50 + (25 * (item % 2));
+    return "hsl(" + hue + ", " + saturation + "%, " + lightness + "%)";
+  };
+
+  function HsvColor (items, item) {
+    let hue = Math.trunc(360 / items * item);
+    let saturation = 0.8;
+    let value = 0.95;
+    return "rgb(" + hsv2rgb(hue, saturation, value) + ")";
+  };
+
+  function RGBcolor (items, item) {
+    let delta = 255 / 3
+    let step = Math.trunc(255 / (items + 1));
+
+    let red = step * item;
+    let green = step * item + delta;
+    if (green >= 255) { green -= 255};
+    let blue = step * item + 2 * delta;
+    if (blue >= 255) { blue -= 255};
+    return "rgb(" + red + ", " + green + ", " + blue + ")";
+  };
+
+  // hue in range [0, 360]
+  // saturation, value in range [0,1]
+  // return [r,g,b] each in range [0,255]
+  // See: https://en.wikipedia.org/wiki/HSL_and_HSV#From_HSV
+  function hsv2rgb(hue, saturation, value) {
+    let chroma = value * saturation;
+    let hue1 = hue / 60;
+    let x = chroma * (1- Math.abs((hue1 % 2) - 1));
+    let r1, g1, b1;
+    if (hue1 >= 0 && hue1 <= 1) {
+      ([r1, g1, b1] = [chroma, x, 0]);
+    } else if (hue1 >= 1 && hue1 <= 2) {
+      ([r1, g1, b1] = [x, chroma, 0]);
+    } else if (hue1 >= 2 && hue1 <= 3) {
+      ([r1, g1, b1] = [0, chroma, x]);
+    } else if (hue1 >= 3 && hue1 <= 4) {
+      ([r1, g1, b1] = [0, x, chroma]);
+    } else if (hue1 >= 4 && hue1 <= 5) {
+      ([r1, g1, b1] = [x, 0, chroma]);
+    } else if (hue1 >= 5 && hue1 <= 6) {
+      ([r1, g1, b1] = [chroma, 0, x]);
+    }
+    
+    let m = value - chroma;
+    let [r,g,b] = [r1+m, g1+m, b1+m];
+    
+    // Change r,g,b values from [0,1] to [0,255]
+    return [255*r,255*g,255*b];
+  };
+
+  function renderChart(labels, datasets, currency) {
+    var ctx = document.getElementById("EarningsChart").getContext('2d');
+    var myChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: datasets
+      },
+      options: {
+        scales: {
+          x: {
+            title: {
+              font: { 
+                size: 20
+              },
+              text: 'Date'
+            },
+            stacked: true
+          },
+          y: {
+            title: {
+              display: 'true',
+              font: { 
+                size: 20
+              },
+              text: currency
+            },
+            stacked: true
+          }
+        },
+        plugins: { 
+          legend: {
+            labels: {
+              font: { 
+                size: 18
+              }
+            }
+          },
+          title: {
+            display: true,
+            font: { 
+              family: 'Arial, Helvetica, sans-serif',
+              size: 32,
+              weight: 'normal'
+            },
+            text: 'Daily Mining Earnings'
+          },
+          tooltip: {
+            enabled: true,
+            callbacks: {
+              label: function(context) {
+                var label = context.dataset.label || '';
+
+                if (label) {
+                    label += ': ';
+                }
+                if (context.parsed.y !== 0) {
+                    label += (context.parsed.y.toFixed(3) + " " + currency);
+                    return label;
+                }
+              }
+            },
+            itemSort: function(a, b) {
+              return b.datasetIndex - a.datasetIndex;
+            },
+            titleFont: { 
+              size: 16
+            },
+            bodyFont: { 
+              size: 16
+            }
+          }
+        }
+      }
+    });
+  }
+
+  $(function() {
+    function updateearningsdata() {
+      $.ajax({
+        url: '/earningschartdata', 
+        success: function (earningsdata) {
+          var datasets = [];
+
+          for (var pool in earningsdata.Pools) {
+            var BTCvalue = [];
+            var BTCRate = [];
+            for (var index in earningsdata.Pools[pool]) {
+              BTCvalue.push(earningsdata.BTCrate * (earningsdata.Pools[pool][index]));
+              BTCRate.push(earningsdata.Pools[pool][index]);
+            };
+            var earnings = {
+              label: pool.replace('Internal', '(Internal)').replace('External', '(External)'),
+              data: BTCvalue,
+              backgroundColor: Colors[datasets.length]
+              // backgroundColor: HslColor(Object.keys(earningsdata.Pools).length, datasets.length)
+              // backgroundColor: HsvColor(Object.keys(earningsdata.Pools).length, datasets.length)
+              // backgroundColor: RGBcolor(Object.keys(earningsdata.Pools).length, datasets.length)
+            };
+            datasets.push(earnings);
+          }
+          renderChart(earningsdata.Labels, datasets, earningsdata.Currency);
+        }
+      });
+    }
+    updateearningsdata();
+
+    window.setInterval(function() { 
+      updateearningsdata();
+    }, (parseInt(config.PoolBalancesUpdateInterval) * 60 * 1000));
+
+  });
+
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

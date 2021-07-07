@@ -1,0 +1,21 @@
+{
+    "as":  [ "Asia", "USA East", "Europe East", "Europe West", "USA West"],
+    "Asia":  ["Asia", "USA East", "Europe East", "Europe West", "USA West"],
+    "aspac":  [ "Asia", "USA East", "Europe East", "Europe West", "USA West"],
+    "eu":  ["Europe West", "Europe East", "USA West", "USA East", "Asia"],
+    "Europe West":  ["Europe West", "Europe East", "USA West", "USA East", "Asia"],
+    "eu-east":  ["Europe East", "Europe West", "USA West", "USA East", "Asia"],
+    "eu-west":  ["Europe West", "Europe East", "USA West", "USA East", "Asia"],
+    "jp":  ["Asia", "USA East", "Europe East", "Europe West", "USA West"],
+    "na":  ["USA West", "USA East", "Europe East", "Europe West", "Asia"],
+    "ru":  ["Europe East", "Europe West", "USA West", "USA East", "Asia"],
+    "sea":  ["Asia", "Europe East", "Europe West", "USA West", "USA East"],
+    "us":  ["USA West", "USA East", "Europe West", "Europe East", "Asia"],
+    "naw":  ["USA West", "USA East", "Europe West", "Europe East", "Asia"],
+    "usa":  ["USA West", "USA East", "Europe West", "Europe East", "Asia"],
+    "usw":  ["USA West", "USA East", "Europe West", "Europe East", "Asia"],
+    "USA East":  ["USA East", "USA West", "Europe East", "Europe West", "Asia"],
+    "USA West":  ["USA West", "USA East", "Europe East", "Europe West", "Asia"],
+    "usa-east":  ["USA East", "USA West", "Europe East", "Europe West", "Asia"],
+    "usa-west":  ["USA West", "USA East", "Europe East", "Europe West", "Asia"]
+}

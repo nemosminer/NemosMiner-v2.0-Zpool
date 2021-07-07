@@ -1,0 +1,148 @@
+<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" data-navbaractive="navmonitoring" class="h2">Monitoring Settings</h1>
+</div>
+
+<div id="configfilename" class="alert alert-info" role="alert"></div>
+
+<input title="Report to Server" type="checkbox" id="ReportToServer" name="ReportToServer">
+<label title="Report to Server" for="ReportToServer">Report to Server</label>
+<input title="Monitoring Server host name" type="text" id="MonitoringServer" name="MonitoringServer" value="https://nemosminer.com" size=64>
+
+<br>
+<label title="Monitoring user ID &#10;must be unique for each monitored mining rig" for="MonitoringUser">Monitoring User ID</label>
+<input title="Monitoring user ID &#10;must be unique for each monitored mining rig" type="text" id="MonitoringUser" name="MonitoringUser" value="" pattern="[0-9A-Fa-f\-]{36}" size=36>
+<button id="new-guid" class="btn btn-secondary">Generate new User ID</button>
+
+<br><br>
+<input title="Show workers of other mining rigs &#10; `Reporting to Server` must be enabled on these rigs" type="checkbox" id="ShowWorkerStatus" name="ShowWorkerStatus">
+<label title="Show workers of other mining rigs &#10; `Reporting to Server` must be enabled on these rigs" for="ShowWorkerStatus">Show other Rigs</label>
+
+<br><br>
+<button id="save-button" class="btn btn-primary">Apply Configuration</button>
+
+<div id="workerlist">
+  <br><br>
+  <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 id="title" data-navbaractive="navrigmonitor" class="h2">Rig Monitor</h1>
+  </div>
+
+  <div class="alert alert-info" role="alert">Shows status of all reporting rigs</div>
+
+  <table id="workers" class="table"
+    data-icons="icons"
+    data-url="/displayworkers"
+    data-cache="false"
+    data-toggle="table"
+    data-show-button-text="true"
+    data-remember-order="true"
+    data-filter-control="true"
+    data-disable-control-when-search="true"
+    data-show-search-clear-button="true"
+    data-show-columns="true"
+    data-show-toggle="true"
+    data-show-refresh="true"
+    data-detail-view="true"
+    data-show-refresh="true"
+    data-auto-refresh="true"
+    data-auto-refresh-status="true"
+    data-sort-name="LastSeen"
+    data-sort-order="asc"
+    data-click-to-select="true"
+    data-detail-formatter="detailFormatter"
+    >
+
+    <thead>
+      <tr>
+        <th data-field="LastSeen" data-sortable="true" data-filter-control="input" data-filter-strict-search="false" data-formatter="formatTimeSince">Last seen</th>
+        <th data-field="Worker" data-sortable="true" data-filter-control="input" data-filter-strict-search="false">Worker</th>
+        <th data-field="Status" data-sortable="true" data-filter-control="select">Status</th>
+        <th data-field="Version" data-sortable="true" data-filter-control="input" data-filter-strict-search="false">Version</th>
+        <th data-field="Currency" data-sortable="true">Currency</th>
+        <th data-field="EstimatedEarning" data-sortable="true">Estimated earning/day</th>
+        <th data-field="EstimatedProfit" data-sortable="true">Estimated profit/day</th>
+        <th data-field="Miner" data-sortable="true" data-filter-control="input" data-filter-strict-search="false">Miner(s)</th>
+        <th data-field="Pools" data-sortable="true" data-filter-control="input" data-filter-strict-search="false">Pool(s)</th>
+        <th data-field="Algos" data-sortable="true" data-filter-control="input" data-filter-strict-search="false">Algorithm(s)</th>
+        <th data-field="BenchmarkSpeeds" data-sortable="true">Benchmarked Speed(s)</th>
+        <th data-field="ActualSpeeds" data-sortable="true">Actual Speed(s)</th>
+      </tr>
+    </thead>
+  </table>
+</div>
+
+<!-- Start of page scripts -->
+
+<script type="text/javascript">
+  var $table = $('#workers');
+
+  $table.bootstrapTable({
+    // refresh once per interval
+    autoRefreshInterval: (parseInt(config.Interval)),
+    // height: (($(window).height()) - $('h1').outerHeight(true) - 185) * 0.985 - 20
+  })
+
+  // Get config file name
+  $.ajax({url: '/configfile',
+    success: function(result) {
+      $('#configfilename').text("Current configuration file: '" + result + "'");
+    }
+  });
+
+  // show / hide worker list
+  $(document.getElementById('ShowWorkerStatus')).click(function(event) {
+    if (document.getElementById('ShowWorkerStatus').checked) {
+      document.getElementById('workerlist').style.display = "block";
+    } else{
+      document.getElementById('workerlist').style.display = "none";
+    }
+  });
+
+  // Get current config
+  var config = {};
+  $.ajax({url: '/config',
+    success: function(result) {
+      config = result;
+      if (config.ReportToServer) {
+        document.getElementById('ReportToServer').checked = true;
+      }
+      document.getElementById('MonitoringServer').value = config.MonitoringServer;
+      if (config.ShowWorkerStatus) {
+        document.getElementById('ShowWorkerStatus').checked = true;
+      }
+      document.getElementById('MonitoringUser').value = config.MonitoringUser;
+      if (config.ShowWorkerStatus) {
+        document.getElementById('ShowWorkerStatus').checked = true;
+        document.getElementById('workerlist').style.display = "block";
+      } else {
+        document.getElementById('workerlist').style.display = "none";
+      }
+    }
+  });
+
+  $('#save-button').click(function () {
+    config.ReportToServer = document.getElementById('ReportToServer').checked;
+    if ((document.getElementById('MonitoringServer').value).toString().trim() == "") {
+      document.getElementById('MonitoringServer').value = 'https://nemosminer.com';
+    };
+    config.MonitoringServer = document.getElementById('MonitoringServer').value;
+    config.ShowWorkerStatus = document.getElementById('ShowWorkerStatus').checked;
+    config.MonitoringUser = document.getElementById('MonitoringUser').value;
+
+    //Write current config
+    var $command = '/functions/config/set?' + encodeURIComponent(JSON.stringify(config));
+    $('.modal-body').load($command, function() {
+      $('.modal-title').text($('#save-button').text());
+      $('#myModal').modal({show:true});
+    });
+  });
+
+  //Get new guid
+  $('#new-guid').click(function () {
+    document.getElementById('MonitoringUser').value = createUUID();
+  });
+
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

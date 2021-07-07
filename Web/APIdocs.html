@@ -1,0 +1,254 @@
+<!-- Copyright (c) 2018-2019 Nemo, MrPlus & UselessGuru
+
+NemosMiner is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+NemosMiner is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+
+Product:        NemosMiner
+File:           API.psm1
+version:        3.9.9.56
+version date:   04 July 2021-->
+
+
+<html>
+
+<body>
+  <h1>NemosMiner API (version 0.3.9.11)</h1>
+
+  API data is available at http://localhost:[API port]/&lt;resource&gt.
+  (The default API port is 3999)
+
+  <h2>File and Scripts</h2>
+  <p>Anything other than the resources listed below will be looked for in the web directory and sent if it exists.</p>
+
+  <p>Any .ps1 files in the web/scripts directory will be run and their output sent. They get passed a $Parameters object with
+      keys and values from the URL string.
+      Test it with this demo: <a
+          href="http://localhost:3999/scripts/demo.ps1?message=Hello%20world!">/scripts/demo.ps1?message=Hello%20world!</a>
+      This feature can be used to gather data that the API doesn't expose directly.</p>
+  <h2>Resources</h2>
+
+  <h3>APIVersion</h3>
+  <a href="http://localhost:3999/apiversion">/apiversion</a>
+  <p>Returns the version number of NemosMiner API.</p>
+
+  <h3>Algorithms</h3>
+  <a href="http://localhost:3999/algorithms">/algorithms</a>
+  <p>Shows the algorithm mappings used in Get-Algorithm to build normalized algorithm names.</p>
+
+  <h3>All Exchange rates</h3>
+  <a href="http://localhost:3999/rates">/rates</a>
+  <p>Shows the current BTC exchange rate.</p>
+
+  <h3>BTC Exchange rate in main currency</h3>
+  <a href="http://localhost:3999/btc">/btc</a>
+  <p>Shows all current exchange rates in main currency.</p>
+
+  <h3>Balances</h3>
+  <a href="http://localhost:3999/balances">/balances</a>
+  <p>Returns the current balance information calculated by the balance tracker.</p>
+
+  <h3>Balance Data</h3>
+  <a href="http://localhost:3999/balancedata">/balancedata</a>
+  <p>Returns the balances collected by the balances tracker used to calculate balance information.</p>
+
+  <h3>BrainJobs</h3>
+  <a href="http://localhost:3999/brainjobs">/brainjobs</a>
+  <p>Returns the brainjobs information.</p>
+
+  <h3>Config</h3>
+  <a href="http://localhost:3999/config">/config</a>
+  <p>Returns the config stored in the current config file.</p>
+
+  <h3>ConfigFile</h3>
+  <a href="http://localhost:3999/configfile">/configfile</a>
+  <p>Returns the current config file name.</p>
+
+  <h3>PoolsConfigFile</h3>
+  <a href="http://localhost:3999/poolsconfigfile">/poolsconfigfile</a>
+  <p>Returns the current pools config file name.</p>
+
+  <h3>Running Configuration</h3>
+  <a href="http://localhost:3999/configrunning">/configrunning</a>
+  <p>Returns the full configuration NemosMiner is currently using after all variable substitution (including 'PoolsConfig' built from the optional '.\Config\PoolsConfig.json' file).</p>
+
+  <h3>Currency</h3>
+  <a href="http://localhost:3999/currency">/currency</a>
+  <p>Returns the main currency.</p>
+
+  <h3>All Currencies</h3>
+  <a href="http://localhost:3999/allcurrencies">/allcurrencies</a>
+  <p>Returns the list of all currencies (main currency, extra currency and all currencies from balances)</p>
+
+  <h3>Balances Currencies</h3>
+  <a href="http://localhost:3999/balancescurrencies">/balancescurrencies</a>
+  <p>Returns the list of balances currencies</p>
+
+  <h3>Extra Currencies</h3>
+  <a href="http://localhost:3999/extracurrencies">/extracurrencies</a>
+  <p>Returns the list of extra currencies</p>
+
+  <h3>Devices</h3>
+  <a href="http://localhost:3999/devices">/devices</a>
+  <p>Shows information about all mining devices.</p>
+
+  <h3>Disabled Devices</h3>
+  <a href="http://localhost:3999/devices/disabled">/devices/disabled</a>
+  <p>Shows information about all disabled mining devices.</p>
+
+  <h3>Enabled Devices</h3>
+  <a href="http://localhost:3999/devices/enabled">/devices/enabled</a>
+  <p>Shows information about all enabled mining devices.</p>
+
+  <h3>Earnings Chart Data</h3>
+  <a href="http://localhost:3999/earningschartdata">/earningschartdata</a>
+  <p>Returns the data required for earnings chart.</p>
+
+  <h3>DAG Data</h3>
+  <a href="http://localhost:3999/dagdata">/dagdata</a>
+  <p>Returns the DAG data (Ethash & EtcHash).</p>
+
+  <h3>Miners</h3>
+  <a href="http://localhost:3999/miners">/miners</a>
+  <p>Shows all available miners data, use for debugging.</p>
+
+  <h3>Available Miners</h3>
+  <a href="http://localhost:3999/miners/available">/miners/available</a>
+  <p>Shows the available miners data, use for debugging.</p>
+
+  <h3>Best Miners</h3>
+  <a href="http://localhost:3999/miners/best">/miners/best</a>
+  <p>Shows the best miners data, use for debugging.</p>
+
+  <h3>BestMiners_Combos</h3>
+  <a href="http://localhost:3999/miners/fastest">/miners/bestminers_combos</a>
+  <p>Shows the bestminers_combos data, use for debugging.</p>
+
+  <h3>BestMiners_Combo</h3>
+  <a href="http://localhost:3999/miners/fastest">/miners/bestminers_combo</a>
+  <p>Shows the bestminers_combo data, use for debugging.</p>
+
+  <h3>Fastest Miners</h3>
+  <a href="http://localhost:3999/miners/fastest">/miners/fastest</a>
+  <p>Shows the fastestminers data, use for debugging.</p>
+
+  <h3>Failed Miners</h3>
+  <a href="http://localhost:3999/miners/failed">/miners/failed</a>
+  <p>Shows the failed miners data, use for debugging.</p>
+
+  <h3>Running Miners</h3>
+  <a href="http://localhost:3999/miners/running">/miners/running</a>
+  <p>Shows the running miners data, use for debugging.</p>
+
+  <h3>Running Miners</h3>
+  <a href="http://localhost:3999/miners/sorted">/miners/sorted</a>
+  <p>Shows the sortedminers data, use for debugging.</p>
+
+  <h3>Unvailable Miners</h3>
+  <a href="http://localhost:3999/miners/unavailable">/miners/unavailable</a>
+  <p>Shows the unavailable miners data, use for debugging.</p>
+
+  <h3>Miners_Device_Combos</h3>
+  <a href="http://localhost:3999/miners_device_combos">/miners_device_combos</a>
+  <p>Shows the miners_device_combos data, use for debugging.</p>
+
+  <h3>Mining power cost</h3>
+  <a href="http://localhost:3999/miningpowercost">/miningpowercost</a>
+  <p>Shows current mining power cost.
+
+  <h3>Mining earning</h3>
+  <a href="http://localhost:3999/miningearning">/miningearning</a>
+  <p>Shows current mining earning.</p>
+
+  <h3>Mining profit</h3>
+  <a href="http://localhost:3999/miningprofit">/miningprofit</a>
+  <p>Shows current mining profit.</p>
+
+  <h3>PoolsConfig</h3>
+  <a href="http://localhost:3999/poolsconfig">/poolsconfig</a>
+  <p>Shows the pool configuration entries.</p>
+
+  <h3>Pools</h3>
+  <a href="http://localhost:3999/pools">/pools</a>
+  <p>Shows all pool data entries.</p>
+
+  <h3>Best Pools</h3>
+  <a href="http://localhost:3999/pools/best">/pools/best</a>
+  <p>Shows the best pool configuration entries.</p>
+
+  <h3>Available Pools</h3>
+  <a href="http://localhost:3999/pools/available">/pools/available</a>
+  <p>Shows the available pool configuration entries.</p>
+
+  <h3>Unavailable Pools</h3>
+  <a href="http://localhost:3999/pools/unavailable">/pools/unavailable</a>
+  <p>Shows the unavailable pool configuration entries.</p>
+
+  <h3>Pool reasons</h3>
+  <a href="http://localhost:3999/poolreasons">/poolreasons</a>
+  <p>Shows all reasons why pools are unavailable</p>
+
+  <h3>Regions</h3>
+  <a href="http://localhost:3999/regions">/regions</a>
+  <p>Shows the region information (defined in Regions.txt).</p>
+
+  <h3>Rig Monitor</h3>
+  <a href="http://localhost:3999/displayworkers">/displayworkers</a>
+  <p>Shows the rig data as reported by the monitoring server.</p>
+
+  <h3>Stats</h3>
+  <a href="http://localhost:3999/stats">/stats</a>
+  <p>Shows all stat data in the $Stats hashtable, use for debugging.</p>
+
+  <h3>Summary</h3>
+  <a href="http://localhost:3999/summary">/summary</a>
+  <p>Shows earnings / profit summary and BTC exchange rate (as shown in the Web GUI header).</p>
+
+  <h3>SwitchingLog</h3>
+  <a href="http://localhost:3999/switchinglog">/switchinglog</a>
+  <p>Shows the previously executed miners.</p>
+
+  <h3>Unprofitable Algorithms</h3>
+  <a href="http://localhost:3999/unprofitablealgorithms">/unprofitablealgorithms</a>
+  <p>Shows the list of unprofitable algorithms.</p>
+
+  <h3>Unsupported Devices</h3>
+  <a href="http://localhost:3999/devices/unsupported">/devices/unsupported</a>
+  <p>Shows information about all unsupported mining devices.</p>
+
+  <h3>Watchdog Timers</h3>
+  <a href="http://localhost:3999/watchdogtimers">/watchdogtimers</a>
+  <p>Shows the watchdog timers.</p>
+
+  <h3>Functions</h3>
+  <p>/functions/api/stop</p>
+  <p>/functions/config/set</p>
+  <p>/functions/log/get</p>
+  <p>/functions/mining/getstatus</p>
+  <p>/functions/mining/pause</p>
+  <p>/functions/mining/start</p>
+  <p>/functions/mining/stop</p>
+  <p>/functions/log/clear</p>
+  <p>/functions/stat/get</p>
+  <p>/functions/stat/remove</p>
+  <p>/functions/pool/enable</p>
+  <p>/functions/pool/disable</p>
+  <p>/functions/switchinglog/clear</p>
+  <p>/functions/variables/get</p>
+  <p>/functions/watchdogtimers/remove</p>
+  <p>/functions/watchdogtimers/reset</p>
+
+  <a href="https://nemosminer.com">NemosMiner.com</a>
+</body>
+
+</html>

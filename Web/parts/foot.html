@@ -1,0 +1,59 @@
+        </main>
+      </div>
+    </div>
+  </body>
+
+  <div class="footer" id="footer"></div>
+
+  <!-- Start of page scripts -->
+
+  <script type="text/javascript">
+
+    // Set the active sidebar item
+    $(function() {
+      $('#'+$('#title').data('navbaractive')).addClass('active');
+    });
+
+    // set the footer
+    $.ajax({
+      url: '/version',
+      success: function(result) {
+        $("#footer").empty().append(result.join('&nbsp;/&nbsp;') + '&nbsp;/&nbsp;All earnings and profit numbers are estimates based on data provided by the pools API&nbsp;/&nbsp&copy; www.nemosminer.com');
+      }
+    });
+
+    $('#miningpause').click(function () {
+      $command = '/functions/mining/pause';
+      $('.modal-body').load($command, function() {
+        $('.modal-title').text($('#miningpause').text());
+        $('#myModal').modal({show:true});
+      });
+      document.getElementById('miningpause').disabled = true;
+      document.getElementById('miningstart').disabled = true;
+      document.getElementById('miningstop').disabled = true;
+    });
+
+    $('#miningstart').click(function () {
+      $command = '/functions/mining/start';
+      $('.modal-body').load($command, function() {
+        $('.modal-title').text($('#miningstart').text());
+        $('#myModal').modal({show:true});
+      });
+      document.getElementById('miningpause').disabled = true;
+      document.getElementById('miningstart').disabled = true;
+      document.getElementById('miningstop').disabled = true;
+    });
+
+    $('#miningstop').click(function () {
+      $command = '/functions/mining/stop';
+      $('.modal-body').load($command, function() {
+        $('.modal-title').text($('#miningstop').text());
+        $('#myModal').modal({show:true});
+      });
+      document.getElementById('miningpause').disabled = true;
+      document.getElementById('miningstart').disabled = true;
+      document.getElementById('miningstop').disabled = true;
+    });
+
+</script>
+</html>

@@ -1,0 +1,125 @@
+<!--#include file="/parts/head.html" -->
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+  <h1 id="title" class="h2" data-navbaractive="navminerstats">Manage Miner Stats</h1>
+</div>
+
+<div class="alert alert-info" role="alert">NemosMiner stores all profit, hashrate and power usage data in stat files.</div>
+
+<div class="card-deck">
+  <div class="card mt-3">
+    <div class="card-header">
+      <h5>Reset Benchmarks for 0H/s miners</h5>
+    </div>
+    <div class="card-body">
+      <p>Clear the stats for miners that have a benchmarked hashrate of 0H/s.</p>
+      <p>These miners may have failed to benchmark properly.<br>Clearing their stats allows them to attempt benchmarking again.<br>You should watch closely for failed miners after doing this.</p>
+      <a href="#" id="showzerohashrateminers" class="btn btn-info">Show miners with 0H/s</a>
+      <p></p>
+      <a href="#" id="resetzerohashrateminers" class="btn btn-primary">Reset miners with 0H/s</a>
+    </div>
+  </div>
+  <div class="card mt-3">
+    <div class="card-header">
+      <h5>Reset PowerUsage for 0W miners</h5>
+    </div>
+    <div class="card-body">
+      <p>Clear the stats for miners that have a measured power usage of 0W.</p>
+      <p>These miners may have failed to measure power usage properly.<br>Clearing their recorded value allows them to attempt measuring again.</p>
+      <a href="#" id="showzeropowerusageminers" class="btn btn-info">Show miners with 0W power usage</a>
+      <p></p>
+      <a href="#" id="resetzeropowerusageminers" class="btn btn-primary">Reset miners with 0W power usage</a>
+    </div>
+  </div>
+  <div class="card mt-3">
+    <div class="card-header">
+      <h5>Reset Profit Data</h5>
+    </div>
+    <div class="card-body">
+      <p>Reset profit data.</p>
+      <p>To ensure your profit data is accurate, you should do this after hardware changes, changing overclock settings, driver updates, and miner updates.</p>
+      <a href="#" id="resetallprofit" class="btn btn-primary">Reset profit data</a>
+    </div>
+  </div>
+  <div class="card mt-3 bg-warning">
+    <div class="card-header">
+      <h5>Reset All Benchmarks</h5>
+    </div>
+    <div class="card-body">
+      <p>Reset the stats for all miners.</p>
+      <p>To ensure your benchmarks are accurate, you should do this after hardware changes, changing overclock settings, driver updates, and miner updates.</p>
+      <p></p>
+      <p>This will force all miners to benchmark again.</p>
+      <a href="#" id="resetallbenchmarks" class="btn btn-danger">Reset all miner stats</a>
+    </div>
+  </div>
+  <div class="card mt-3 bg-warning">
+    <div class="card-header">
+      <h5>Reset All Power Usage</h5>
+    </div>
+    <div class="card-body">
+      <p>Clear the power usage recordings for all miners.</p>
+      <p>To ensure your power usage recordings are accurate, you should do this after hardware changes, changing overclock settings, driver updates, and miner updates.</p>
+      <p></p>
+      <p>This will force all miners to measure power again.</p>
+      <a href="#" id="resetallpowerusage" class="btn btn-danger">Reset all power usage data</a>
+    </div>
+  </div>
+</div>
+
+<!-- Start of page scripts -->
+
+<script>
+
+  $("#showzerohashrateminers").on("click",function() {
+    $(".modal-body").load("functions/stat/get?Type=HashRate&Value=0&Unit=H/s", function() {
+      $(".modal-title").text($("#showzerohashrateminers").text());
+      $("#myModal").modal({show:true});
+    });
+  });
+
+  $("#resetzerohashrateminers").on("click",function() {
+    $(".modal-body").load("functions/stat/remove?Type=HashRate&Value=0&Unit=H/s", function() {
+      $(".modal-title").text($("#resetzerohashrateminers").text());
+      $("#myModal").modal({show:true});
+    });
+  });
+
+  $("#showzeropowerusageminers").on("click",function() {
+    $(".modal-body").load("functions/stat/get?Type=PowerUsage&Value=0&Unit=W", function() {
+      $(".modal-title").text($("#showzeropowerusageminers").text());
+      $("#myModal").modal({show:true});
+    });
+  });
+
+  $("#resetzeropowerusageminers").on("click",function() {
+    $(".modal-body").load("functions/stat/remove?Type=PowerUsage&Value=0&Unit=H/s", function() {
+      $(".modal-title").text($("#resetzeropowerusageminers").text());
+      $("#myModal").modal({show:true});
+    });
+  });
+
+  $("#resetallprofit").on("click",function() {
+    $(".modal-body").load("functions/stat/remove?Type=Profit", function() {
+      $(".modal-title").text($("#resetallprofit").text());
+      $("#myModal").modal({show:true});
+    });
+  });
+
+  $("#resetallbenchmarks").on("click",function() {
+    $(".modal-body").load("functions/stat/remove?Type=HashRate", function() {
+      $(".modal-title").text($("#resetallbenchmarks").text());
+      $("#myModal").modal({show:true});
+    });
+  });
+
+  $("#resetallpowerusage").on("click",function() {
+    $(".modal-body").load("functions/stat/remove?Type=PowerUsage", function() {
+      $(".modal-title").text($("#resetallpowerusage").text());
+      $("#myModal").modal({show:true});
+    });
+  });
+
+</script>
+
+<!-- End of page scripts -->
+<!--#include file="/parts/foot.html" -->

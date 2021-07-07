@@ -1,37 +1,43 @@
 # NemosMiner
 
-Updated 17 May 2019
+NemosMiner monitors mining pools in real-time in order to find the most profitable Algo
 
-[![Github All Releases](https://img.shields.io/github/downloads/nemosminer/Nemosminer/total.svg)](https://github.com/nemosminer/Nemosminer/releases)
-[![GitHub release](https://img.shields.io/github/release/nemosminer/Nemosminer/all.svg)](https://github.com/nemosminer/Nemosminer/releases)
-[![GitHub Release Date](https://img.shields.io/github/release-date-pre/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/releases)
-[![GitHub license](https://img.shields.io/github/license/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/blob/master/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/network)
+Updated 04 July 2021
 
-Copyright (c) 2018-2019 Nemo and MrPlus
+
+Copyright (c) 2018-2021 Nemo, MrPlus & UselessGuru
 
 This is free software, and you are welcome to redistribute it
 under certain conditions.
-https://github.com/nemosminer/NemosMiner/blob/master/LICENSE
+https://github.com/Minerx117/NemosMiner/blob/master/LICENSE
 
-by Nemo/Minerx117
+Updated/Maintained by Nemo/Minerx117 & UselessGuru
 
-with Help From MrPlusGH and grantemsley 
- 
-[![Discord tag](https://img.shields.io/discord/522832112311599124.svg?label=Discord&style=plastic)](https://discord.gg/2BCqPxe) [Click to Join Discord](https://discord.gg/2BCqPxe)
+with alot of help from MrPlusGH, grantemsley & UselessGuru. Without them NemosMiner would not be possible.
+
+NemosMiner code is partly based on
+
+- MultiPoolMiner which can be found here: https://github.com/MultiPoolMiner/MultiPoolMiner
+
+- NPlusMiner which can be found here: https://github.com/MrPlusGH/NPlusMiner
+
+
+Note: This beta version is **NOT backwards compatible** with the current 3.8.x code base.
+It is highly recommended to install this version to a new directory.
+
+Some configuration options have changed. See 'Changed Config Items.txt' for more information.
+NemosMiner will automatically convert an existing configuration file.
 
 *****
-**Have questions? Need help?** We're on Discord: https://discord.gg/2BCqPxe
 
-NemosMiner Monitors mining pools in real-time in order to find the most profitable Algo
-
-	 GUI and easy configuration
-	 Auto Benchmarks Each algo to get optimal speeds 
-	 Fully automated 
-	 Auto Downloads Miners
-	 Auto Updates
-	 Monitoring
+**Main features:**
+   - GUI and easy configuration
+   - Auto Benchmarks Each algo to get optimal speeds 
+   - Fully automated 
+   - Auto Downloads Miners
+   - Auto Updates
+   - Monitoring
+   - Earnings graph
 
 *****
 
@@ -43,194 +49,242 @@ Easy configuration, easy start:
       3. Select your pool 
       4. Save Config
       5. Start
-      
-      note: 2. you only need to change Username if you are using Miningpoolhub
-      
-     Algo selection / removal
-  
-      +algo for algo selection
-      -algo for algo removal
 
-      If "+" Used, all selected algo have to be listed
-      If "Minus" Used, all algo selected but exluded ones.
+      Note: 2. you only need to change Username if you are using Miningpoolhub or ProHashing
+
+   Algorithm selection / removal
+
+      +[algorithm] to enable algorithm
+      -[algorithm] to disable algorithm
+
+      If '+' is used, then only the explicitly enabled algorithms are used
+      If '-' is used, then all algorithms except the disabled ones are used
+      Leave empty to use ALL available algorithms (not recommended as it may cause more miner switching)
 
       Do not combine + and - for the same algo
 
-     Examples:
-     Algo list = -x16r
-     Will mine anything but x16r
+      Examples:
+      Algorithm list = -x16r
+      Will mine anything but x16r
 
-     Algo list = -x16r,-bcd
-     Will mine anything but x16r and bcd
+      Algorithm list = -x16r,-bcd
+      Will mine anything but x16r and bcd
 
-     Algo list = +x16r
-     Will mine only x16r
+      Algorithm list = +x16r
+      Will mine only x16r
 
-     Algo list = +x16r,+bcd
-     Will mine only x16r and BCD
+      Algorithm list = +x16r,+bcd
+      Will mine only x16r and BCD
 
-     Algo list blank
-     Will mine anything
-  
-  Pools variants
+      Algorithm list blank
+      Will mine anything
 
-      24hr - uses last 24hour Actual API too request profit
-         -Low switching rate
-      plus - uses advanced calculations to reduce switching
-         -Medium switching rate
-      normal - uses current estimate API too request profit
-         -High switching rate
-  
-  Developer/Contributors Donation: 
-  list and wallets is publicly available at: https://nemosminer.com/data/devlist.json
-     
-      There is a 5 minute per day donation (0.3%), that can be changed in the config (Minimum is 3)0.2%
-      We want to stay completely transparent on the way donations are managed in the product. Donations occurs once every 24 hours for the selected amount of time (default 5 minutes). The first donation sequence occurs 1 hour after miners are started. If Interval is set higher than the donation time, the interval will prime. Example for default parameters. Miners started at 10, First donation cycle runs at 10:55 untill 11, Next donation cycle occurs 24 hours after.All donation time and addresses are recording in the logs folder.
+   Pools Variants
 
-NemosMiner Monitoring Server : https://nemosminer.com
+      *24hr  - uses last 24hour price data in pool API to calculate profit (no estimates or advanced calculations)
 
-     Keep tabs on all your mining rigs from one place
-     You can now optionally monitor all your workers remotely, both in the GUI and via https://nemosminer.com  
-     Monitoring setup instructions https://nemosminer.com/setup.php 
+      *Plus - uses advanced calculations to reduce uneeded switching
 
-   
+      normal - uses current price data in pool API to calculate profit (no estimates or advanced calculations)
+
+      *Coins - uses advanced calculations, mines only top paying coin in Algo (MiningPoolHub & ZergPool)
+
+
+   Developer/Contributors Donation: 
+      The list and wallets is publicly available at: https://nemosminer.com/data/devlist.json
+
+      Donation Fee = 0.9%
+      There is 13 minute per day default donation (0.9%),
+      which can be increased or decreased in the config tab, 
+      please help support the great team behind NemosMiner by leaving mining donations turned on.
+      We want to stay completely transparent on the way fees are managed in the product.
+      Fees cycle occurs once every 24 hours for the selected amount of time (13 minutes). 
+      Donation start time is randomized each day.
+      If Interval is set higher than the donation time, the interval will prime.
+      Example for default parameters (13 minutes):
+      - NemosMiner was started at 10:00h
+      - First donation cycle starts somewhen beween 10:01h and 23:47h and will then donate for 13 minutes, then mine for you again until the next donation run. 
+      - After 00:00h the donation start time is randomized again. 
+      - When donation start time is reached it will then donate for 13 minutes, then mine for you again until the next donation run.
+      All donation time and addresses are recorded in the logs folder.
+
+   NemosMiner Monitoring Server: https://nemosminer.com
+
+      Keep tabs on all your mining rigs from one place
+      You can now optionally monitor all your workers remotely, both in the GUI and via https://nemosminer.com  
+      Monitoring setup instructions https://nemosminer.com/setup.php 
+
    GUI
-   
-      Since version 3.0 NemosMiner has a GUI making it easy to configure and run.
-	  Relies on config files. No need to edit bat files. Simply run NemosMiner 
-	  Set the config on the config tab, save, close, run
+
+      Since version 3.9.9.x (Beta) NemosMiner has a Web GUI making it easy to configure and run.
+      NemosMiner relies on config files. No need to edit bat files. Simply run NemosMiner.bat
+      Set the config in the Web GUI, apply & start mining
 
    Pause mining
-   
+
       Ability to pause miners while keeping other jobs running (pause button)
       This will stop mining activity
       BrainPlus will still run in the background avoiding the learning phase on resume
       EarningTracker will still run in the background avoiding the learning phase on resume
 
-   prerun
-   
-      Ability to run a batch prior switching to a specific algo.
-      For example, can be used to set per algo OC via nvidiaInspector
-      Simply create a file named <AlgoName>.bat in prerun folder
-      If <AlgoName>.bat does not exist, will try to launch prerun/default.bat
+   PreRun
+
+      Ability to run a batch prior switching to a specific miner and/or algorithm.
+      The prerun scripts can be used to set per miner/algorithm OC via nvidiaInspector or OverdriveNTool.
+      Before starting a miner executable NemosMiner is trying to launch one of the following 3 prerun scripts (in this order):
+      1. <MinerName>_<Algorithm>.bat
+         Simply create a file named <MinerName>_<AlgorithmName>.bat in prerun folder, e.g. 'Bminer-v16.3.1-1xRadeonRX5808GB-Handshake-10.bat' or 'CcminerMTP-v1.3.2-1xGTX10606GB_MTP.bat'
+      2. <Algorithm>.bat
+         Simply create a file named <AlgorithmName>.bat in prerun folder, e.g. 'Ethash.bat'
+      3. default.bat
+         If neither of the two above exist, NemosMiner will try to launch prerun\default.bat
       Use overclock with caution
 
    Per pools config (Advanced)
-   
-        - **This is for advanced users. Do not use if you do not know what you are doing.**
-        - You can now set specific options per pool. For example, you can mine NiceHash on the internal wallet and other pools on a valid wallet. This configuration is provided as an example in Config\PoolsConfig-NHInternal.json
-          - Available options
-            - Wallet = your wallet address
-            - UserName = your MPH user name
-            - WorkerName = your worker name
-            - PricePenaltyFactor = See explanation below
-	    - Algorithm = List of included or excluded Aglo on pool (see example files)
-          - Usage
-            - The file Config\PoolsConfig.json contains per pool configuration details. If a pool is listed in this file,
-	    the specific settings will be taken into account. If not, the setting for the entry name default will be used.
-	    **Do not delete the default entry.**
-            - Edit Config\PoolsConfig.json
-            - Add an entry for the pool you want to customize
-              - The name must be the NemosMiner name for the pool. ie. for ahashpool, if you use Plus. The name is ahashpoolplus.
-              - (**careful with json formating ;)**)
-              - Best way is to duplicate the default entry
-        - Note that the GUI only updates the default entry. Any other changes need to be done manualy
+
+      **This is for advanced users. Do not use if you do not know what you are doing.**
+
+      The file Config\PoolsConfig.json contains configuration details.
+      There is a separate section for each configured pool. If a pool is listed in this file,
+      the specific settings will be taken into account. If not, the built in default values will be used.
+
+      You can set specific options per pool. For example, you can mine NiceHash on the internal wallet and other pools on a valid wallet. This configuration is provided as an example in Config\PoolsConfig-NHInternal.json
+
+      Available options:
+         - Wallets[Currency] = Your wallet address for [Currency]; some pools, e.g. HiveOn require wallets in each supported currency
+         - UserName = your MPH or ProHashing user name
+         - WorkerName = your worker name
+         - PricePenaltyFactor = See explanation below
+         - Algorithm = List of included or excluded algorithms per pool (see example files)
+         - PayoutThreshold[Currency] = pool will allow pyout if this amount is reached
+
+      Usage:
+         - Edit Config\PoolsConfig.json
+         - Add an entry for the pool you want to customize
+            - The name must be the pool base name (omit *24hrs or *Coins), e.g ZergPool (even if you have configured ZergPoolCoins in the pool list)
+            - (**careful with json formating ;)**
+
+      Note that the GUI only updates default values (valid for ALL pools unless there is pool specific configuration setting defined in PoolConfig.json). Any other changes need to be done manually.
 
    PricePenaltyFactor
 
-        - When using advanced per pool configuration, it is possible to add a penalty factor for a specific pool. This simply adds as a multiplicator on estimations presented by the pool.
-        - Example scenario
-          - NiceHash has a 4% fee - Set PricePenaltyFactor to 0.96 (1-0.04)
-          - You feel like a pool is exaggerating his estimations by 10% - Set PricePenaltyFactor to 0.9
+      When using advanced per pool configuration, it is possible to add a penalty factor for a specific pool. This simply adds as a multiplicator on estimations presented by the pool.
 
-  zergpoolplus/nlpoolplus/ahashpoolplus/zpoolplus/blazepoolplus/phiphipoolplus/blockmastersplus/hashrefineryplus
-   
-      Uses calculations based on 24hractual and currentestimate ahashpool prices to get more realistic estimate.
-      Includes some trust index based on past 1hr currentestimate variation from 24hr.
+      Example scenario:
+         - You feel like a pool is exaggerating its estimations by 10% - Set PricePenaltyFactor to 0.9
+
+   AHashPool/BlockMasters/NLPool/ZergPool/Zpool
+
+      Uses calculations based on 24hr actual and current estimate prices to get a more realistic estimate.
+      Includes some trust index based on past 1hr current estimate variation from 24hr.
       AND is NOT sensible to spikes.
-      This shows less switching than following Current Estimate and more switching that following the 24hr Actual.
+      This shows less switching than following current estimate and more switching that following the 24hr actual.
       Better profitability.
 
-   Earnings Tracking
-   
-      Displays BTC/H and BTC/D as well a estimation of when the pool payment threshold will be reached.
-      Supported pools:
-            ahashpool
-            zpool
-            nicehash
-            miningpoolhub (partial)
-      If mining more that one pools, shows stats for any supported pool
-      Press key e in the console window to show/hide earnings
+   Balances Tracking
 
-   Support running multiple instances
-   
+      Displays BTC/h and BTC/d as well a estimation of when the pool payment threshold will be reached.
+      Supported pools:
+         - AHashPool
+         - BlockMasters
+         - HiveON
+         - MiningPoolHub
+         - NiceHash (internal & external wallet)
+         - NLPool
+         - ProHashing
+         - ZergPool
+         - Zpool
+      If mining more than one pool, NemosMiner shows stats for any supported pool.
+      Press key 'b' in the console window to show/hide earnings.
+
+   Support for running multiple instances
+
       **Experimental**
       More than one instance of NemosMiner can run on the same rig
-      Each instance must be placed in it's own directory
+      Each instance must be placed in its own directory
       Miner has to be started prior the launch of the next instance
 
    Optional miners (Advanced)
-   
-      Some miners are not enabled by default in NemosMiner for a variety of reasons:
-       
-              These are closed source and therefore not enabled in NemosMiner by default.
-              Use at your own risk.
- 
-      For advanced users, check the Optional Miners checkbox on the Config tab to enable these miners.
-      
-   CustomMiners (Advanced)
-      
-      Users can place any miner.ps1 from miners/optionalminers or custom user created miner.ps1 files, in CustomMiners folder 
-      leaving miners and optionalminers disabled in config will enable CustomMiners folder 
 
-   Algo switching log
-   
-      Simple algo switching log in csv switching.log file found in Logs folder.
+      These are closed source and therefore not enabled in NemosMiner by default.
+      Use at your own risk.
+
+      For advanced users, check the Optional Miners checkbox on the Config tab to enable these miners.
+
+   CustomMiners (Advanced)
+
+      Users can place any miner.ps1 from miners/optionalminers or custom user created miner.ps1 files in CustomMiners folder 
+      Note: Miners in CustomMiners folder are always enabled (to disable a custom miner it must be removed from the CustomMiners folder)
+
+   Algorithm switching log
+
+      Simple algo switching log as csv (switching.log file found in Logs folder).
       You can easily track switching rate.
 
    Console Display Options
-   
+
       Use -UIStyle Light or -UIStyle Full in config.json
-            Full = Usual display (Default)
-            Light = Show only currently mining info
-      UIStyle automaticaly swtiches to Full during benchmarking.
+         Full = Usual display (Default)
+         Light = Show only current mining info
+      UIStyle automatically switches to Full during benchmarking.
+      Press key 's' in the console window to switch UIStyle.
 
    In session console display toggle
-   
-      Press key s in the window to switch between light and full display
-      Press key e in the window to show/hide earnings 
+
+      Press key 'a' in the window to show/hide all avaialable miners 
+      Press key 'b' in the window to show/hide pool balances
+      Press key 's' in the window to switch between light and full display
       Will toggle display at next refresh
 
-   New version notification
-   
+   New version notification (Available since version 3.9.9.10)
+
       NemosMiner will notify new version availability
-*****
- 
-If you have Windows 7, 8, or 8.1, please update PowerShell:
-[update PowerShell](https://www.microsoft.com/en-us/download/details.aspx?id=54616)
 
-some miners may need 'Visual C++ 2015' if you don't already have it: (install both x86 & x64) 
-[Visual C++ Redistributable for Visual Studio 2015/2014](https://www.microsoft.com/en-US/download/details.aspx?id=48145)
+***Requirements***
 
-some miners may need 'Visual C++ 2013' if you don't already have it: (install both x86 & x64) 
-[Visual C++ Redistributable for Visual Studio 2013/2012](https://www.microsoft.com/en-US/download/details.aspx?id=40784)
+PowerShell Version 7.x is required:
 
-running multiple cards its recommended to increase Virtual Memory 64gb is optimal
+[Windows Powershell 7.3.1 (Recommended)](https://github.com/PowerShell/PowerShell/releases/download/v7.1.3/PowerShell-7.1.3-win-x64.msi)
 
-recommended/optimal Windows Nvidia driver 430.39 
+**Some miners may need 'Visual C+ RunTimes download/extract, run install_all.bat file**
 
-[Windows10](http://us.download.nvidia.com/Windows/430.39/430.39-desktop-win10-64bit-international-whql.exe)
+[Visual C+ RunTimes](https://github.com/Minerx117/Visual-C-Runtimes-All-in-One-Sep-2019/releases/download/sep2019/Visual-C-Runtimes-All-in-One-Sep-2019.zip)
 
-[Windows7, 8, 8.1](http://us.download.nvidia.com/Windows/430.39/430.39-desktop-win8-win7-64bit-international-whql.exe)
+**Virtual memory settings**
 
-recommended/optimal Linux Nvidia driver 430.09
+When running multiple cards its recommended to increase Virtual Memory. 64GB is optimal.
 
-[Linux/Hiveos](http://us.download.nvidia.com/XFree86/Linux-x86_64/430.09/NVIDIA-Linux-x86_64-430.09.run)
+**Recommended/optimal Windows Nvidia driver**
 
-Made for & Tested with 6x1070 6x1070ti 6x1080 6x1080ti 6x1660ti 6x2060 6x2070 6x2080 6x2080ti(users have reported up to 12cards working have not tested myself)
-Some miners do not support more that 9 cards
+[Windows 10 Nvidia driver 461.92](https://us.download.nvidia.com/Windows/461.92/461.92-desktop-win10-64bit-international-dch-whql.exe)
+
+[Windows 7, 8, 8.1 Nvidia driver 461.92](https://international.download.nvidia.com/Windows/461.92/461.92-desktop-win7-64bit-international-whql.exe)
+
+Windows 10 Nvidia driver for RTX3060 = 470.05 Torrent Magnet
+magnet:?xt=urn:btih:8453693771195232CE91406C1A3481EBBA315866&dn=470.05-gameready-win-10-dch-64bit-international&tr=http%3a%2f%2fbt1.archive.org%3a6969%2fannounce&tr=http%3a%2f%2fbt2.archive.org%3a6969%2fannounce&ws=https%3a%2f%2farchive.org%2fdownload%2f&ws=http%3a%2f%2fia601501.us.archive.org%2f33%2fitems%2f&ws=%2f33%2fitems%2f
+
+**Recommended/optimal Windows AMD driver**
+
+[Windows 10 AMD GPU Driver 21.2.2](https://drivers.amd.com/drivers/non-whql-radeon-software-adrenalin-2020-21.2.2-win10-64bit-feb11.exe)
+
+   NemosMiner is currently tested on the following Rigs: 
+
+      windows10-1xGTX-1660Super/RYZEN-3700x (Test PC) 
+
+      windows10-9xAMD-5700XT/Octominer (test Rig 1)
+      windows8.1-6xRTX-3070/RYZEN-3700x (test Rig 2)
+      windows10-6xRTX-3080/RYZEN-3700x (test Rig 3)
+      windows10-1xGTX-1060Super/1xRX580-8GB/RX5700/Inteli5-8600K (test Rig 4)
+      (users have reported up to 12cards are working, I have not tested myself)
+      Some miners do not support more than 9 cards
+
+      CPU miners are tested with AMD Ryzen 3700x & Inteli5-8600K CPUs
 
 *****
 
 Licensed under the GNU General Public License v3.0
-Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications, which include larger works using a licensed work, under the same license. Copyright and license notices must be preserved. Contributors provide an express grant of patent rights. https://github.com/nemosminer/NemosMiner/blob/master/LICENSE
+Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications, which include larger works using a licensed work, under the same license.
+Copyright and license notices must be preserved. Contributors provide an express grant of patent rights.
+https://github.com/Minerx117/NemosMiner/blob/master/LICENSE
+
+Happy Mining

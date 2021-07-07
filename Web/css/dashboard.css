@@ -1,0 +1,179 @@
+body {
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.detail-icon:before {
+  content: "+";
+}
+
+.svg-inline--fa {
+  width: 16px;
+  height: 16px;
+  vertical-align: text-bottom;
+  margin-right: 1rem;
+}
+
+/*
+ * Sidebar
+ */
+.sidebar {
+  width: 250px;
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10; /* Behind the navbar */
+  padding: 75px 0 0; /* Height of navbar */
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+}
+
+@media (min-width: 768px) {
+  .main {
+    padding-right: 40px;
+    padding-left: 290px;
+  }
+}
+
+.sidebar-sticky {
+  position: relative;
+  top: 0;
+  height: calc(100vh - 75px);
+  padding-top: 1.6rem;
+  overflow-x: hidden;
+  overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+  padding-bottom: 1.1rem;
+  padding-left: 1rem;
+}
+
+@supports ((position: -webkit-sticky) or (position: sticky)) {
+  .sidebar-sticky {
+    position: -webkit-sticky;
+    position: sticky;
+  }
+}
+
+.sidebar .nav-link {
+  font-weight: 500;
+  color: #333;
+}
+
+.sidebar .nav-link .feather {
+  margin-right: 4px;
+  color: #999;
+}
+
+.sidebar .nav-link.active {
+  color: #007bff;
+}
+
+.sidebar .nav-link:hover .feather,
+.sidebar .nav-link.active .feather {
+  color: inherit;
+}
+
+.sidebar-heading {
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+/*
+ * Content
+ */
+[role="main"] {
+  padding-top: 75px; /* Space for fixed navbar */
+}
+
+/*
+ * Navbar
+ */
+.navbar-brand {
+  width: 250px;
+  padding-top: 1.6rem;
+  padding-bottom: 1.1rem;
+  padding-left: 2rem;
+  font-size: 1rem;
+  background-color: rgba(0, 0, 0, .25);
+  box-shadow: inset -1px 0 0 rgba(0, 0, 0, .25);
+}
+
+.navbar .form-control {
+  padding: 1.75rem;
+  border-width: 0;
+  border-radius: 0;
+}
+
+.form-control-dark {
+  color: #fff;
+  background-color: rgba(255, 255, 255, .1);
+  border-color: rgba(255, 255, 255, .1);
+}
+
+.form-control-dark:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
+}
+
+.navbar-button {
+  position: absolute;
+  left: 290px;
+}
+
+.navbar-summary {
+  position: absolute;
+  padding-top: 1.6rem;
+  padding-bottom: 1.1rem;
+  padding-right: 20px;
+  left: 800px;
+}
+
+/*
+ * Utilities
+ */
+.border-top { border-top: 1px solid #e5e5e5; }
+.border-bottom { border-bottom: 1px solid #e5e5e5; }
+
+.column {
+  float: left;
+  width: 50%;
+}
+
+/* Clear floats after the columns */
+.row:after {
+  content: "";
+  display: table;
+  clear: both;
+}
+
+/*
+* Modal
+*/
+.modal {
+  padding: 1%;
+  white-space: pre-wrap; /* allow \n for new line */
+}
+
+.modal-lg {
+  min-width: auto;
+  max-width: fit-content;
+}
+
+/*
+* Form
+*/
+form .error {
+  color: #ff0000;
+  display: inline;
+}
+
+/*
+* Footer
+*/
+.footer {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  text-align: right;
+  padding-right: 40px;
+  z-index: -1;
+}

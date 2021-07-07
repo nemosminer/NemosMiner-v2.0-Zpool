@@ -1,0 +1,69 @@
+﻿{
+    "amd":  {
+                "Type":  "GPU",
+                "Vendor":  "AMD",
+                "Id":  "*",
+                "Type_Id":  "*",
+                "Vendor_Id":  "*",
+                "Type_Vendor_Id":  "{1}"
+            },
+    "cpu":  {
+                "Type":  "CPU",
+                "Vendor":  "*",
+                "Id":  "*",
+                "Type_Id":  "{1}",
+                "Vendor_Id":  "*",
+                "Type_Vendor_Id":  "*"
+            },
+    "device":  {
+                   "Type":  "*",
+                   "Vendor":  "*",
+                   "Id":  "{1}",
+                   "Type_Id":  "*",
+                   "Vendor_Id":  "*",
+                   "Type_Vendor_Id":  "*"
+               },
+    "gpu":  {
+                "Type":  "GPU",
+                "Vendor":  "*",
+                "Id":  "*",
+                "Type_Id":  "{1}",
+                "Vendor_Id":  "*",
+                "Type_Vendor_Id":  "*"
+            },
+    "intel":  {
+                  "Type":  "GPU",
+                  "Vendor":  "INTEL",
+                  "Id":  "*",
+                  "Type_Id":  "*",
+                  "Vendor_Id":  "*",
+                  "Type_Vendor_Id":  "{1}"
+              },
+    "nvidia":  {
+                   "Type":  "GPU",
+                   "Vendor":  "NVIDIA",
+                   "Id":  "*",
+                   "Type_Id":  "*",
+                   "Vendor_Id":  "*",
+                   "Type_Vendor_Id":  "{1}"
+               },
+    "opencl":  {
+                   "Type":  "GPU",
+                   "Vendor":  "*",
+                   "Index":  "*",
+                   "Type_Index":  "*",
+                   "Vendor_Index":  "*",
+                   "Type_Vendor_Index":  "*",
+                   "PlatformId":  "{1}",
+                   "PlatformId_Index":  "*",
+                   "Type_PlatformId_Index":  "{2}"
+               },
+    "slot":  {
+                 "Type":  "GPU",
+                 "Vendor":  "*",
+                 "Slot":  "*",
+                 "Type_Slot":  "{1}",
+                 "Vendor_Slot":  "*",
+                 "Type_Vendor_Slot":  "*"
+             }
+}
