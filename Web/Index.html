@@ -1,0 +1,75 @@
+<!-- Copyright (c) 2018-2019 Nemo & MrPlus
+
+NemosMiner is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+NemosMiner is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program. If not, see <http://www.gnu.org/licenses/>. -->
+
+
+<!-- Product:        NemosMiner
+File:           API.psm1
+version:        3.8.1.3
+version date:   12 November 2019
+ -->
+
+<html>
+
+<body>
+    <h1>NemosMiner API (version 0.1)</h1>
+
+    API data is available at http://localhost:[API port]/&lt;resource&gt.
+    (The default API port is 3999)
+
+    <h2>File and Scripts</h2>
+    <p>Anything other than the resources listed below will be looked for in the web directory and sent if it exists.</p>
+
+    <p>Any .ps1 files in the web/scripts directory will be run and their output sent. They get passed a $Parameters object with
+        keys and values from the URL string.
+        Test it with this demo: <a
+            href="http://localhost:3999/scripts/demo.ps1?message=Hello%20world!">/scripts/demo.ps1?message=Hello%20world!</a>
+        This feature can be used to gather data that the API doesn't expose directly.</p>
+
+    <h2>Resources</h2>
+
+    <h3>ActiveMinerPrograms</h3>
+    <a href="http://localhost:3999/activeminerprograms">/activeminerprograms</a>
+    <p>Shows all data in $Variables.ActiveMinerPrograms, use for debugging.</p>
+
+    <h3>APIVersion</h3>
+    <a href="http://localhost:3999/apiversion">/apiversion</a>
+    <p>Returns the version number of NemosMiner API.</p>
+
+    <h3>Config</h3>
+    <a href="http://localhost:3999/config">/config</a>
+    <p>Shows the full configuration for the running script, after all variable substitution.
+    </p>
+
+    <h3>Miners</h3>
+    <a href="http://localhost:3999/miners">/miners</a>
+    <p>Shows all data in $Variables.miners, use for debugging.</p>
+
+    <h3>PoolsConfig</h3>
+    <a href="http://localhost:3999/poolsconfig">/poolsconfig</a>
+    <p>Shows the pool configuration entries.
+    </p>
+
+    <h3>Stats</h3>
+    <a href="http://localhost:3999/variables">/stats</a>
+    <p>Shows all stat data in the $Stats hashtable, use for debugging.</p>
+
+    <h3>Variables</h3>
+    <a href="http://localhost:3999/variables">/variables</a>
+    <p>Shows all data in the $Variables hashtable, use for debugging.</p>
+
+    <a href="https://nemosminer.com">NemosMiner.com</a>
+</body>
+
+</html>

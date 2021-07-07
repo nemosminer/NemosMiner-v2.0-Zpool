@@ -1,30 +1,32 @@
 # NemosMiner
 
-Updated 17 May 2019
+NemosMiner Monitors mining pools in real-time in order to find the most profitable Algo
 
-[![Github All Releases](https://img.shields.io/github/downloads/nemosminer/Nemosminer/total.svg)](https://github.com/nemosminer/Nemosminer/releases)
-[![GitHub release](https://img.shields.io/github/release/nemosminer/Nemosminer/all.svg)](https://github.com/nemosminer/Nemosminer/releases)
-[![GitHub Release Date](https://img.shields.io/github/release-date-pre/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/releases)
-[![GitHub license](https://img.shields.io/github/license/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/blob/master/LICENSE)
-[![GitHub stars](https://img.shields.io/github/stars/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/stargazers)
+Updated 29 November 2020
+
+[![Github All Releases](https://img.shields.io/github/downloads/nemosminer/Nemosminer/total.svg)](https://github.com/nemosminer/Nemosminer/releases) +
+[![Github All Releases](https://img.shields.io/github/downloads/Minerx117/Nemosminer/total.svg)](https://github.com/Minerx117/Nemosminer/releases)
+[![GitHub release](https://img.shields.io/github/release/Minerx117/Nemosminer/all.svg)](https://github.com/Minerx117/NemosMiner/releases)
+[![GitHub Release Date](https://img.shields.io/github/release-date-pre/Minerx117/NemosMiner.svg)](https://github.com/Minerx117/NemosMiner/releases)
+[![GitHub license](https://img.shields.io/github/license/Minerx117/Nemosminer.svg)](https://github.com/Minerx117/NemosMiner/blob/master/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/stargazers) +
+[![GitHub stars](https://img.shields.io/github/stars/Minerx117/Nemosminer.svg)](https://github.com/Minerx117/Nemosminer/stargazers)
 [![GitHub forks](https://img.shields.io/github/forks/nemosminer/Nemosminer.svg)](https://github.com/nemosminer/Nemosminer/network)
 
-Copyright (c) 2018-2019 Nemo and MrPlus
+Copyright (c) 2018-2020 Nemo, MrPlus & UselessGuru
 
 This is free software, and you are welcome to redistribute it
 under certain conditions.
-https://github.com/nemosminer/NemosMiner/blob/master/LICENSE
+https://github.com/Minerx117/NemosMiner/blob/master/LICENSE
 
-by Nemo/Minerx117
+Updated/Maintained by Nemo/Minerx117
 
-with Help From MrPlusGH and grantemsley 
+with alot of Help From MrPlusGH, grantemsley & UselessGuru without them NemosMiner would not be possible
+
+NemosMiner was based on MultiPoolMiner which can be found here: https://github.com/MultiPoolMiner/MultiPoolMiner
+NemosMiner is currently based on NPlusMiner which can be found here: https://github.com/MrPlusGH/NPlusMiner
  
-[![Discord tag](https://img.shields.io/discord/522832112311599124.svg?label=Discord&style=plastic)](https://discord.gg/2BCqPxe) [Click to Join Discord](https://discord.gg/2BCqPxe)
-
 *****
-**Have questions? Need help?** We're on Discord: https://discord.gg/2BCqPxe
-
-NemosMiner Monitors mining pools in real-time in order to find the most profitable Algo
 
 	 GUI and easy configuration
 	 Auto Benchmarks Each algo to get optimal speeds 
@@ -74,19 +76,28 @@ Easy configuration, easy start:
   
   Pools variants
 
-      24hr - uses last 24hour Actual API too request profit
-         -Low switching rate
-      plus - uses advanced calculations to reduce switching
-         -Medium switching rate
-      normal - uses current estimate API too request profit
-         -High switching rate
+      24hr - uses last 24hour Actual API too request profit (no estimates or advanced calculations)
+	 
+      normal - uses advanced calculations to reduce uneeded switching
+	 
+      coins - uses advanced calculations, mines only top paying coin in Algo (ZergPool Only)
+	 
   
   Developer/Contributors Donation: 
   list and wallets is publicly available at: https://nemosminer.com/data/devlist.json
      
-      There is a 5 minute per day donation (0.3%), that can be changed in the config (Minimum is 3)0.2%
-      We want to stay completely transparent on the way donations are managed in the product. Donations occurs once every 24 hours for the selected amount of time (default 5 minutes). The first donation sequence occurs 1 hour after miners are started. If Interval is set higher than the donation time, the interval will prime. Example for default parameters. Miners started at 10, First donation cycle runs at 10:55 untill 11, Next donation cycle occurs 24 hours after.All donation time and addresses are recording in the logs folder.
-
+    Donation Fee = 0.9%
+    There is 13 minute per day default donation (0.9%),
+    which can be increased or decreased in the config tab, 
+    please help support the great team behind NemosMiner by leaving mining donations turned on
+    We want to stay completely transparent on the way fees are managed in the product.
+    Fees cycle occurs once every 24 hours for the selected amount of time (13 minutes).
+    The first donation sequence occurs 1 hour after miners are started.
+    If Interval is set higher than the donation time, the interval will prime.
+    Example for default parameters:
+    Miners started at 10, First donation cycle runs at 11 until 11:13, Next donation cycle occurs 24 hours after.
+    All donation time and addresses are recorded in the logs folder.
+   
 NemosMiner Monitoring Server : https://nemosminer.com
 
      Keep tabs on all your mining rigs from one place
@@ -97,8 +108,8 @@ NemosMiner Monitoring Server : https://nemosminer.com
    GUI
    
       Since version 3.0 NemosMiner has a GUI making it easy to configure and run.
-	  Relies on config files. No need to edit bat files. Simply run NemosMiner 
-	  Set the config on the config tab, save, close, run
+	  Relies on config files. No need to edit bat files. Simply run NemosMiner.bat 
+	  Set the config on the config tab, save, close, run NemosMiner.bat
 
    Pause mining
    
@@ -140,12 +151,11 @@ NemosMiner Monitoring Server : https://nemosminer.com
 
         - When using advanced per pool configuration, it is possible to add a penalty factor for a specific pool. This simply adds as a multiplicator on estimations presented by the pool.
         - Example scenario
-          - NiceHash has a 4% fee - Set PricePenaltyFactor to 0.96 (1-0.04)
           - You feel like a pool is exaggerating his estimations by 10% - Set PricePenaltyFactor to 0.9
 
-  zergpoolplus/nlpoolplus/ahashpoolplus/zpoolplus/blazepoolplus/phiphipoolplus/blockmastersplus/hashrefineryplus
+  zergpool/zergpoolcoins/nlpool/ahashpool/zpool/blazepool/blockmasters
    
-      Uses calculations based on 24hractual and currentestimate ahashpool prices to get more realistic estimate.
+      Uses calculations based on 24hractual and currentestimate prices to get a more realistic estimate.
       Includes some trust index based on past 1hr currentestimate variation from 24hr.
       AND is NOT sensible to spikes.
       This shows less switching than following Current Estimate and more switching that following the 24hr Actual.
@@ -204,33 +214,44 @@ NemosMiner Monitoring Server : https://nemosminer.com
    New version notification
    
       NemosMiner will notify new version availability
-*****
  
-If you have Windows 7, 8, or 8.1, please update PowerShell:
-[update PowerShell](https://www.microsoft.com/en-us/download/details.aspx?id=54616)
+If you have Windows 7, 8, or 8.1, please update PowerShell (Version 7.x is highly recommeded): 
 
-some miners may need 'Visual C++ 2015' if you don't already have it: (install both x86 & x64) 
-[Visual C++ Redistributable for Visual Studio 2015/2014](https://www.microsoft.com/en-US/download/details.aspx?id=48145)
+[update PowerShell](https://github.com/PowerShell/PowerShell/releases)
 
-some miners may need 'Visual C++ 2013' if you don't already have it: (install both x86 & x64) 
-[Visual C++ Redistributable for Visual Studio 2013/2012](https://www.microsoft.com/en-US/download/details.aspx?id=40784)
+Some miners may need 'Visual C+ RunTimes download/extract, run install_all.bat file
+
+[Visual C+ RunTimes](https://github.com/Minerx117/Visual-C-Runtimes-All-in-One-Sep-2019/releases/download/sep2019/Visual-C-Runtimes-All-in-One-Sep-2019.zip)
 
 running multiple cards its recommended to increase Virtual Memory 64gb is optimal
 
-recommended/optimal Windows Nvidia driver 430.39 
+[recommended/optimal Windows 10 Nvidia driver 461.92](https://us.download.nvidia.com/Windows/461.92/461.92-desktop-win10-64bit-international-dch-whql.exe)
 
-[Windows10](http://us.download.nvidia.com/Windows/430.39/430.39-desktop-win10-64bit-international-whql.exe)
+[recommended/optimal Windows 7, 8, 8.1 Nvidia driver 461.92](https://international.download.nvidia.com/Windows/461.92/461.92-desktop-win7-64bit-international-whql.exe)
 
-[Windows7, 8, 8.1](http://us.download.nvidia.com/Windows/430.39/430.39-desktop-win8-win7-64bit-international-whql.exe)
+recommended/optimal Windows 10 Nvidia driver for RTX3060 = 470.05 Torrent Magnet
 
-recommended/optimal Linux Nvidia driver 430.09
+magnet:?xt=urn:btih:8453693771195232CE91406C1A3481EBBA315866&dn=470.05-gameready-win-10-dch-64bit-international&tr=http%3a%2f%2fbt1.archive.org%3a6969%2fannounce&tr=http%3a%2f%2fbt2.archive.org%3a6969%2fannounce&ws=https%3a%2f%2farchive.org%2fdownload%2f&ws=http%3a%2f%2fia601501.us.archive.org%2f33%2fitems%2f&ws=%2f33%2fitems%2f
 
-[Linux/Hiveos](http://us.download.nvidia.com/XFree86/Linux-x86_64/430.09/NVIDIA-Linux-x86_64-430.09.run)
+[recommended/optimal Windows 10 AMD GPU Driver 21.2.2](https://drivers.amd.com/drivers/non-whql-radeon-software-adrenalin-2020-21.2.2-win10-64bit-feb11.exe)
 
-Made for & Tested with 6x1070 6x1070ti 6x1080 6x1080ti 6x1660ti 6x2060 6x2070 6x2080 6x2080ti(users have reported up to 12cards working have not tested myself)
-Some miners do not support more that 9 cards
+   NemosMiner is currently tested on the following Rigs: 
+
+      windows10-1xGTX-2080/RYZEN-1700 (Test PC) 
+
+      windows10-9xAMD-5700XT/Octominer (test Rig 1)
+      windows7-6xRTX-3070/RYZEN-3700x (test Rig 2)
+      windows10-6xRTX-3080/RYZEN-3700x (test Rig 3)
+      (users have reported up to 12cards are working, I have not tested myself)
+      Some miners do not support more than 9 cards
+
+      CPU miners are tested with AMD Ryzen 1700 & 3700x CPU's
 
 *****
 
 Licensed under the GNU General Public License v3.0
-Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications, which include larger works using a licensed work, under the same license. Copyright and license notices must be preserved. Contributors provide an express grant of patent rights. https://github.com/nemosminer/NemosMiner/blob/master/LICENSE
+Permissions of this strong copyleft license are conditioned on making available complete source code of licensed works and modifications, which include larger works using a licensed work, under the same license.
+Copyright and license notices must be preserved. Contributors provide an express grant of patent rights.
+https://github.com/Minerx117/NemosMiner/blob/master/LICENSE
+
+Happy Mining

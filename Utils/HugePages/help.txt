@@ -1,0 +1,5 @@
+change -u username
+
+to your username you want to give access to lock memory privilege/huge page files
+
+eg    ntrights.exe ntrights +r SeLockMemoryPrivilege -u bobslaptop

@@ -1,27 +1,27 @@
-if (!(IsLoaded(".\Include.ps1"))) {. .\Include.ps1; RegisterLoaded(".\Include.ps1")}
- 
-$Path = ".\Bin\NVIDIA-Ethminer0171\ethminer.exe"
-$Uri = "https://github.com/ethereum-mining/ethminer/releases/download/v0.17.1/ethminer-0.17.1-cuda10.0-windows-amd64.zip"
-$Commands = [PSCustomObject]@{
-     #"ethash" = "" #Ethash
+If (-not (IsLoaded(".\Includes\include.ps1"))) { . .\Includes\include.ps1; RegisterLoaded(".\Includes\include.ps1") }
+$Path = ".\Bin\NVIDIA-ethminer0190r56\ethminer.exe"
+$Uri = "https://github.com/Minerx117/ethminer/releases/download/v0.19.0-r5.6/ethminer0190r56.7z"
+$Commands = [PSCustomObject]@{ 
+    "ethash" = "" #ethash
 }
-$Port = $Variables.NVIDIAMinerAPITCPPort
-$Name = (Get-Item $script:MyInvocation.MyCommand.Path).BaseName
-
-$Commands | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name | ForEach-Object {
-	$Algo = Get-Algorithm($_)
-	If ($Pools.($Algo).Host -notlike "*nicehash*") {return}
-    [PSCustomObject]@{
-        Type      = "NVIDIA"
-        Path      = $Path
-        Arguments = "--cuda-devices $($Config.SelGPUDSTM) --api-port -$Port -U -P stratum://$($Pools.($Algo).User):x@$($Pools.($Algo).Host):$($Pools.($Algo).Port)$($Commands.$_)"
-        HashRates = [PSCustomObject]@{($Algo) = $Stats."$($Name)_$($Algo)_HashRate".Day} 
-        API       = "ethminer"
-        Port      = $Variables.NVIDIAMinerAPITCPPort
-        Wrap      = $false
-        URI       = $Uri    
-        User      = $Pools.($Algo).User
-        Host = $Pools.($Algo).Host
-        Coin = $Pools.($Algo).Coin
+$Name = "$(Get-Item $MyInvocation.MyCommand.Path | Select-Object -ExpandProperty BaseName)"
+$Commands | Get-Member -MemberType NoteProperty | Select-Object -ExpandProperty Name | ForEach-Object { $Algo = Get-Algorithm $_; $_ } | Where-Object { $Pools.$Algo.Host } | ForEach-Object {
+    If ($Algo) { 
+        If ($Pools.$($Algo).Name -eq "MPH") { 
+            $AlgoParameter = "-P stratum+tcp://$($Pools.$Algo.User):$($Pools.$Algo.Pass)@$($Pools.$Algo.Host):$($Pools.$Algo.Port)"
+        }
+        Else { 
+            $AlgoParameter = "-P stratum2+tcp://$($Pools.$Algo.User):$($Pools.$Algo.Pass)@$($Pools.$Algo.Host):$($Pools.$Algo.Port)"
+        }
+        [PSCustomObject]@{ 
+            Type      = "NVIDIA"
+            Path      = $Path
+            Arguments = "--cuda-devices $($Config.SelGPUDSTM) --api-port -$($Variables.NVIDIAMinerAPITCPPort) -U $AlgoParameter$($Commands.$_)"
+            HashRates = [PSCustomObject]@{ $Algo = $Stats."$($Name)_$($Algo)_HashRate".Week }
+            API       = "ethminer"
+            Port      = $Variables.NVIDIAMinerAPITCPPort #4068
+            Wrap      = $false
+            URI       = $Uri
+        }
     }
 }
